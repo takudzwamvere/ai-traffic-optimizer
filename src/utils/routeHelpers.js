@@ -1,112 +1,132 @@
 import { COLORS } from '../constants/colors';
+import { calculateSegmentSpeed } from './trafficEngine';
 
-// Helper to chunk coordinates and assign colors
-const generateTrafficSegments = (coordinates, type, departureTime) => {
-  const segments = [];
-  const totalPoints = coordinates.length;
-  if (totalPoints < 2) return [];
-
-  // Logic: Peak hours = More congestion (More Red/Orange)
-  const isPeak = departureTime === 'MORNING' || departureTime === 'EVENING';
-
-  let colorPattern; 
-  if (type === 'BEST') {
-      // Best route usually avoids worst traffic, but in peak time it might get some
-      colorPattern = isPeak 
-        ? [COLORS.primary, COLORS.warning, COLORS.primary, COLORS.primary] 
-        : [COLORS.primary, COLORS.primary, COLORS.primary, COLORS.primary];
-  } else if (type === 'ALT') {
-      colorPattern = isPeak 
-        ? [COLORS.warning, COLORS.danger, COLORS.warning, COLORS.primary] 
-        : [COLORS.primary, COLORS.warning, COLORS.warning, COLORS.primary];
-  } else {
-      // SLOW route gets hammered in peak time
-      colorPattern = isPeak 
-        ? [COLORS.danger, COLORS.danger, COLORS.danger, COLORS.warning] 
-        : [COLORS.primary, COLORS.danger, COLORS.danger, COLORS.primary];
-  }
-
-  // Divide route into 4 chunks for simplicity
-  const chunkSize = Math.floor(totalPoints / 4);
+export const processRouteSegments = (route, weatherData, departureTime, timeOffset = 0) => {
+  if (!route.legs) return { segments: [], totalDelay: 0 };
   
-  for(let i=0; i<4; i++) {
-     const start = i * chunkSize;
-     const end = (i === 3) ? totalPoints : (start + chunkSize + 1); // +1 to connect segments
-     const chunkCoords = coordinates.slice(start, end);
-     
-     if (chunkCoords.length > 1) {
-         segments.push({
-             coordinates: chunkCoords.map(c => [c[1], c[0]]), // Leaflet needs [lat, lon], OSRM gives [lon, lat]
-             color: colorPattern[i] || COLORS.primary
-         });
-     }
+  const segments = [];
+  const coords = route.geometry.coordinates;
+  
+  // Set accurate prediction time
+  let date = new Date();
+  if (departureTime === 'MORNING') date.setHours(8, 0, 0);
+  else if (departureTime === 'EVENING') date.setHours(17, 30, 0);
+  
+  let totalDelay = 0;
+  
+  route.legs.forEach(leg => {
+    leg.steps.forEach(step => {
+      const stepCoords = step.geometry.coordinates || []; 
+      
+      if (stepCoords.length > 0) {
+        const metrics = calculateSegmentSpeed(step.distance, step.duration, weatherData, date, timeOffset);
+        totalDelay += metrics.delay;
+        
+        segments.push({
+           coordinates: stepCoords.map(c => [c[1], c[0]]), 
+           color: metrics.color
+        });
+      }
+    });
+  });
+
+  if (segments.length === 0 && coords.length > 0) {
+     const metrics = calculateSegmentSpeed(route.distance, route.duration, weatherData, date, timeOffset);
+     totalDelay += metrics.delay;
+     segments.push({
+         coordinates: coords.map(c => [c[1], c[0]]),
+         color: metrics.color
+     });
   }
-  return segments;
+
+  return { segments, totalDelay };
 };
 
-export const ensureThreeRoutes = (rawRoutes, departureTime = 'NOW') => {
-  let processedRoutes = [...rawRoutes];
+export const ensureThreeRoutes = (rawRoutes, weatherData, departureTime = 'NOW') => {
+  // FORCE 3 Routes Logic:
+  // If we have < 3, duplicate the last one and add "simulated noise" to make it distinct.
+  let routesToProcess = [...rawRoutes];
   
-  // Adjust degradation based on time
-  const isPeak = departureTime === 'MORNING' || departureTime === 'EVENING';
-  const peakFactor = isPeak ? 1.5 : 1.0; // 50% slower in peak time
-
-  while (processedRoutes.length < 3) {
-    const base = processedRoutes[processedRoutes.length - 1];
-    const degradation = (processedRoutes.length === 1 ? 1.15 : 1.3) * peakFactor;
-    const newRoute = { ...base, duration: base.duration * degradation, isSimulated: true };
-    processedRoutes.push(newRoute);
+  while (routesToProcess.length < 3) {
+      // Clone the best/last route
+      const base = routesToProcess[routesToProcess.length - 1]; // usually index 0 if length is 1
+      // Create a "Simulated" copy
+      const simulatedRoute = JSON.parse(JSON.stringify(base)); 
+      simulatedRoute.isSimulated = true;
+      // Add a slight variance ID so we know it's fake
+      simulatedRoute.varianceId = routesToProcess.length; 
+      routesToProcess.push(simulatedRoute);
   }
 
-  return processedRoutes.map((route, index) => {
-    // Apply peak factor to duration for ALL routes (even the real OSRM one if we want to simulate prediction on top)
-    // But usually OSRM gives free-flow or current. We'll add penalty to "simulated" ones or all?
-    // Let's add simulated penalty to all if peak.
-    let duration = route.duration;
-    if (isPeak) duration *= 1.25; // Base traffic penalty for entire city
+  return routesToProcess.map((route, index) => {
+      // Generate predictions for 0, 15, and 30 minutes
+      const predictions = {};
+      
+      [0, 15, 30].forEach(offset => {
+          // If this is a simulated route, we might want to vary the "traffic" slightly
+          // e.g. Route 2 (Simulated) might be "10% worse" to represent a safer but slower path?
+          // For now, let's just rely on the engine but maybe modify 'departureTime' or weather slightly for simulation?
+          // Actually, let's keep it consistent but maybe add a random penalty if isSimulated.
+          
+          const result = processRouteSegments(route, weatherData, departureTime, offset);
+          
+          let duration = route.duration + result.totalDelay;
+          
+          // If simulated, add synthetic variance (e.g. +10% or +20% delay) to make them look different
+          if (route.isSimulated) {
+             const varianceFactor = 1.0 + (route.varianceId * 0.15); // +15% per variance step
+             duration = duration * varianceFactor;
+          }
 
-    let minutes = Math.round(duration / 60);
-    let color, label, reason, type;
+          const minutes = Math.round(duration / 60);
+          
+          // Logic for UI Status
+          const delayRatio = result.totalDelay / route.duration;
+          // ... (Reuse logic logic or store raw data)
+          
+          predictions[offset] = {
+              duration: minutes,
+              formattedDuration: minutes > 60 ? `${Math.floor(minutes/60)}h ${minutes%60}m` : `${minutes} min`,
+              segments: result.segments,
+              color: result.segments.length > 0 ? result.segments[0].color : COLORS.primary // Dominant color? Or segment array
+          };
+      });
 
-    if (index === 0) {
-      color = COLORS.primary; 
-      label = "BEST";
-      reason = isPeak ? "Fastest (Peak)" : "Fastest";
-      type = 'BEST';
-    } else if (index === 1) {
-      color = COLORS.warning; 
-      label = "ALT";
-      reason = isPeak ? "Heavy Traffic" : "Traffic";
-      type = 'ALT';
-    } else {
-      color = COLORS.danger; 
-      label = "SLOW";
-      reason = "Congestion";
-      type = 'SLOW';
-    }
+      // Default to "Now" (offset 0) for the main list
+      const current = predictions[0];
+      const minutes = current.duration;
 
-    // Generate segments for visualization if geometry exists
-    let enhancedGeometry = route.geometry;
-    if (route.geometry && route.geometry.coordinates) {
-        const segments = generateTrafficSegments(route.geometry.coordinates, type, departureTime);
-        enhancedGeometry = {
-            ...route.geometry,
-            properties: {
-                ...route.geometry.properties,
-                segments: segments
-            }
-        };
-    }
+      let label = index === 0 ? "BEST" : "ALT";
+      let uiColor = index === 0 ? COLORS.primary : COLORS.warning;
+      if (minutes > predictions[0].duration * 1.3) {
+         label = "SLOW";
+         uiColor = COLORS.danger;
+      }
 
-    return {
-      ...route,
-      duration: duration, // Update duration
-      geometry: enhancedGeometry, // Override with segmented geometry
-      uiColor: color,
-      uiLabel: label,
-      uiReason: reason,
-      formattedDuration: minutes > 60 ? `${Math.floor(minutes/60)}h ${minutes%60}m` : `${minutes} min`,
-      distanceKm: (route.distance / 1000).toFixed(1)
-    };
+      // Reason Generation
+      const hasRain = weatherData && (weatherData.rain > 0.5 || weatherData.code >= 51);
+      const isPeak = departureTime === 'MORNING' || departureTime === 'EVENING';
+      let reason = "Clear Road";
+      
+      if (uiColor === COLORS.danger) {
+          if (hasRain && isPeak) reason = "Rain & Rush Hour";
+          else if (hasRain) reason = "Weather Delays";
+          else reason = "Heavy Traffic";
+      } else if (uiColor === COLORS.warning) {
+          reason = "Moderate Traffic";
+      }
+
+      return {
+          ...route,
+          predictions, // { 0: {...}, 15: {...}, 30: {...} }
+          // Legacy properties for compatibility
+          formattedDuration: current.formattedDuration,
+          uiColor,
+          uiLabel: label,
+          uiReason: reason,
+          distanceKm: (route.distance / 1000).toFixed(1),
+          startLat: route.geometry.coordinates[0][1], // Ensure accessibility
+          startLon: route.geometry.coordinates[0][0]
+      };
   });
 };

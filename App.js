@@ -9,6 +9,7 @@ import MapLayer from './src/components/MapLayer';
 import SearchBar from './src/components/SearchBar';
 import RouteBottomSheet from './src/components/RouteBottomSheet';
 import NetworkStatus from './src/components/NetworkStatus';
+import WeatherWidget from './src/components/WeatherWidget';
 import { geocodeLocation, getRoute } from './src/services/trafficApi';
 
 // Enable Animations
@@ -31,6 +32,7 @@ function MainApp() {
   const [routes, setRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [weather, setWeather] = useState(null);
   
   // Sheet State
   const [isSheetVisible, setIsSheetVisible] = useState(false);
@@ -67,6 +69,7 @@ function MainApp() {
     setLoading(true);
     setRoutes([]);
     setSelectedRoute(null);
+    setWeather(null);
     setIsSheetVisible(false);
     setIsSheetExpanded(false);
 
@@ -78,8 +81,12 @@ function MainApp() {
     }
 
     if (target) {
-      const processedRoutes = await getRoute(origin, target, departureTime);
+      // Improved: API now returns { routes, weather }
+      const { routes: processedRoutes, weather: weatherData } = await getRoute(origin, target, departureTime);
+      
       setRoutes(processedRoutes);
+      setWeather(weatherData);
+
       if (processedRoutes.length > 0) {
         const best = processedRoutes[0];
         setSelectedRoute(best);
@@ -116,6 +123,7 @@ function MainApp() {
     <View style={styles.container}>
       <StatusBar style="dark" />
       <NetworkStatus style={{ top: insets.top + 10 }} />
+      <WeatherWidget weather={weather} />
       <MapLayer 
         ref={webViewRef} 
         origin={origin}

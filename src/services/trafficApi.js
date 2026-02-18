@@ -1,4 +1,5 @@
 import { ensureThreeRoutes } from '../utils/routeHelpers';
+import { getCurrentWeather } from './weatherApi';
 
 export const geocodeLocation = async (query) => {
   if (!query) return null;
@@ -12,14 +13,22 @@ export const geocodeLocation = async (query) => {
 
 export const getRoute = async (start, end, departureTime = 'NOW') => {
   try {
-    const url = `http://router.project-osrm.org/route/v1/driving/${start.lon},${start.lat};${end.lon},${end.lat}?overview=simplified&geometries=geojson&alternatives=true&steps=true`;
-    const response = await fetch(url);
-    const data = await response.json();
+    // Fetch OSRM Route and Weather Data in parallel
+    const routeUrl = `http://router.project-osrm.org/route/v1/driving/${start.lon},${start.lat};${end.lon},${end.lat}?overview=simplified&geometries=geojson&alternatives=true&steps=true`;
     
-    if (data.code === 'Ok' && data.routes.length > 0) {
-      const sorted = data.routes.sort((a, b) => a.duration - b.duration);
-      return ensureThreeRoutes(sorted, departureTime);
+    const [routeResponse, weatherData] = await Promise.all([
+      fetch(routeUrl).then(res => res.json()),
+      getCurrentWeather(start.lat, start.lon)
+    ]);
+    
+    if (routeResponse.code === 'Ok' && routeResponse.routes.length > 0) {
+      const sorted = routeResponse.routes.sort((a, b) => a.duration - b.duration);
+      const processedRoutes = ensureThreeRoutes(sorted, weatherData, departureTime);
+      return { routes: processedRoutes, weather: weatherData };
     }
-    return [];
-  } catch (error) { return []; }
+    return { routes: [], weather: null };
+  } catch (error) { 
+    console.error("Route Fetch Error:", error);
+    return { routes: [], weather: null }; 
+  }
 };

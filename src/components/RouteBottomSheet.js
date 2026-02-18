@@ -11,15 +11,36 @@ export default function RouteBottomSheet({
   routes, 
   handleRouteSelect 
 }) {
+  const [predictionTime, setPredictionTime] = React.useState(0); // 0, 15, 30
+
   if (!isSheetVisible || !selectedRoute) return null;
 
+  // Helper to get data for current time
+  const getData = (route) => route.predictions ? route.predictions[predictionTime] : { formattedDuration: route.formattedDuration };
+  const currentData = getData(selectedRoute);
+
   return (
-    <View style={[styles.bottomSheet, { height: isSheetExpanded ? '60%' : 190 }]}>
+    <View style={[styles.bottomSheet, { height: isSheetExpanded ? '65%' : 240 }]}>
       
       {/* CLICKABLE HEADER */}
       <TouchableOpacity onPress={toggleSheet} activeOpacity={0.9} style={styles.headerArea}>
         <View style={styles.sheetHandle} />
         
+        {/* PREDICTION TABS */}
+        <View style={styles.tabContainer}>
+           {[0, 15, 30].map(time => (
+             <TouchableOpacity 
+               key={time} 
+               style={[styles.tab, predictionTime === time && styles.activeTab]}
+               onPress={() => setPredictionTime(time)}
+             >
+               <Text style={[styles.tabText, predictionTime === time && styles.activeTabText]}>
+                 {time === 0 ? 'Now' : `+${time} min`}
+               </Text>
+             </TouchableOpacity>
+           ))}
+        </View>
+
         <View style={styles.mainCard}>
           <View style={styles.routeRow}>
               <View style={styles.routeInfo}>
@@ -32,7 +53,7 @@ export default function RouteBottomSheet({
                 
                 {/* Time & Distance */}
                 <View style={{flexDirection: 'row', alignItems: 'baseline', marginTop: 2}}>
-                    <Text style={styles.duration}>{selectedRoute.formattedDuration}</Text>
+                    <Text style={styles.duration}>{currentData.formattedDuration}</Text>
                     <Text style={styles.distance}> {selectedRoute.distanceKm} km</Text>
                 </View>
               </View>
@@ -48,16 +69,18 @@ export default function RouteBottomSheet({
           </View>
         </View>
       </TouchableOpacity>
-
+      
       {/* SCROLLABLE CONTENT (Visible when expanded) */}
       {isSheetExpanded && (
          <ScrollView style={styles.expandedContent} contentContainerStyle={{paddingBottom: 40}}>
             <View style={styles.separator} />
             
-            <Text style={styles.sectionTitle}>Alternative Routes</Text>
+            <Text style={styles.sectionTitle}>Alternative Routes ({predictionTime === 0 ? 'Current' : `In ${predictionTime} mins`})</Text>
             
             {routes.map((route, index) => {
                 const isSelected = selectedRoute === route;
+                const rData = getData(route);
+                
                 return (
                 <TouchableOpacity 
                     key={index} 
@@ -66,7 +89,7 @@ export default function RouteBottomSheet({
                 >
                     <View style={styles.routeRow}>
                         <View>
-                            <Text style={[styles.altDuration, {color: isSelected ? COLORS.text : '#666'}]}>{route.formattedDuration}</Text>
+                            <Text style={[styles.altDuration, {color: isSelected ? COLORS.text : '#666'}]}>{rData.formattedDuration}</Text>
                             <Text style={styles.altDistance}>{route.distanceKm} km</Text>
                         </View>
                         <View style={{alignItems:'flex-end'}}>
@@ -92,8 +115,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   headerArea: { width: '100%', backgroundColor: 'white', paddingBottom: 15 },
-  sheetHandle: { width: 50, height: 5, backgroundColor: COLORS.grayMedium, borderRadius: 10, alignSelf: 'center', marginTop: 12, marginBottom: 15 },
+  sheetHandle: { width: 50, height: 5, backgroundColor: COLORS.grayMedium, borderRadius: 10, alignSelf: 'center', marginTop: 12, marginBottom: 5 },
   
+  tabContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 15 },
+  tab: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#F0F0F0', marginHorizontal: 5 },
+  activeTab: { backgroundColor: COLORS.primary },
+  tabText: { fontSize: 13, fontWeight: '600', color: '#666' },
+  activeTabText: { color: 'white' },
+
   mainCard: { paddingHorizontal: 25 },
   dotSeparator: { width:4, height:4, borderRadius:2, backgroundColor:'#999', marginHorizontal:8 },
   cardTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
