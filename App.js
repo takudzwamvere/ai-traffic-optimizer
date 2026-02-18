@@ -140,7 +140,29 @@ function MainApp() {
     setLoading(false);
   };
 
-  // ... (handleRouteSelect, handleTextChange remain same)
+  const handleTextChange = (text) => {
+    setDestinationQuery(text);
+    if (text.length > 2) {
+      const filtered = BULAWAYO_COMPLETE_LOCATIONS.filter(loc => 
+        loc.name.toLowerCase().includes(text.toLowerCase())
+      );
+      setSuggestions(filtered.slice(0, 5));
+    } else {
+      setSuggestions([]);
+    }
+  };
+
+  const handleRouteSelect = (route) => {
+    setSelectedRoute(route);
+    if (route && route.geometry && route.geometry.coordinates) {
+       const coords = route.geometry.coordinates;
+       const dest = coords[coords.length - 1];
+       const destLon = dest[0];
+       const destLat = dest[1];
+       const script = `drawRoute(${JSON.stringify(route.geometry)}, ${destLat}, ${destLon}, '${route.uiColor}'); true;`;
+       webViewRef.current?.injectJavaScript(script);
+    }
+  };
 
   return (
     <View style={styles.container}>
