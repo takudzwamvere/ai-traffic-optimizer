@@ -63,11 +63,6 @@ export const ensureThreeRoutes = (rawRoutes, weatherData, departureTime = 'NOW')
       const predictions = {};
       
       [0, 15, 30].forEach(offset => {
-          // If this is a simulated route, we might want to vary the "traffic" slightly
-          // e.g. Route 2 (Simulated) might be "10% worse" to represent a safer but slower path?
-          // For now, let's just rely on the engine but maybe modify 'departureTime' or weather slightly for simulation?
-          // Actually, let's keep it consistent but maybe add a random penalty if isSimulated.
-          
           const result = processRouteSegments(route, weatherData, departureTime, offset);
           
           let duration = route.duration + result.totalDelay;
@@ -80,15 +75,11 @@ export const ensureThreeRoutes = (rawRoutes, weatherData, departureTime = 'NOW')
 
           const minutes = Math.round(duration / 60);
           
-          // Logic for UI Status
-          const delayRatio = result.totalDelay / route.duration;
-          // ... (Reuse logic logic or store raw data)
-          
           predictions[offset] = {
               duration: minutes,
               formattedDuration: minutes > 60 ? `${Math.floor(minutes/60)}h ${minutes%60}m` : `${minutes} min`,
               segments: result.segments,
-              color: result.segments.length > 0 ? result.segments[0].color : COLORS.primary // Dominant color? Or segment array
+              color: result.segments.length > 0 ? result.segments[0].color : COLORS.primary
           };
       });
 
@@ -119,13 +110,12 @@ export const ensureThreeRoutes = (rawRoutes, weatherData, departureTime = 'NOW')
       return {
           ...route,
           predictions, // { 0: {...}, 15: {...}, 30: {...} }
-          // Legacy properties for compatibility
           formattedDuration: current.formattedDuration,
           uiColor,
           uiLabel: label,
           uiReason: reason,
           distanceKm: (route.distance / 1000).toFixed(1),
-          startLat: route.geometry.coordinates[0][1], // Ensure accessibility
+          startLat: route.geometry.coordinates[0][1],
           startLon: route.geometry.coordinates[0][0]
       };
   });

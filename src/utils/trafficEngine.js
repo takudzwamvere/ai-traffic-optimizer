@@ -21,11 +21,6 @@ export const ROAD_TYPES = {
 
 // Returns { type, baseSpeed }
 export const classifyRoad = (osrmConnectSpeed) => {
-  // osrmConnectSpeed is usually in m/s or km/h. OSRM usually returns m/s. 
-  // We assume the input might be speed limit or estimated speed from OSRM.
-  // Actually OSRM 'duration' and 'distance' gives us avg speed.
-  // We will assume we calculate speed = distance / duration.
-  
   const speedKmh = osrmConnectSpeed; 
 
   if (speedKmh >= 80) return ROAD_TYPES.HIGHWAY;
