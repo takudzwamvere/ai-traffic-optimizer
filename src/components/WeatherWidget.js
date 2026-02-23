@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 
-export default function WeatherWidget({ weather }) {
+export default function WeatherWidget({ weather, topOffset = 110 }) {
   if (!weather) return null;
 
   // Weather Codes (WMO) -> Icons & Text
@@ -37,7 +37,7 @@ export default function WeatherWidget({ weather }) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { top: topOffset }]}>
       <Feather name={iconName} size={18} color={color} style={{ marginRight: 6 }} />
       <Text style={styles.text}>{label} {Math.round(temp)}°C</Text>
     </View>
@@ -47,7 +47,7 @@ export default function WeatherWidget({ weather }) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 110, // Below Search Bar
+    top: 110,
     left: 20,
     backgroundColor: 'white',
     paddingVertical: 8,

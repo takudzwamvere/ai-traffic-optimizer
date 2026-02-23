@@ -9,8 +9,10 @@ export default function RouteBottomSheet({
   isSheetExpanded, 
   toggleSheet, 
   routes, 
-  handleRouteSelect 
+  handleRouteSelect,
+  children,
 }) {
+
   const [predictionTime, setPredictionTime] = React.useState(0); // 0, 15, 30
 
   if (!isSheetVisible || !selectedRoute) return null;
@@ -100,7 +102,11 @@ export default function RouteBottomSheet({
                 </TouchableOpacity>
                 );
             })}
+
+            {/* Road Conditions Panel (injected as children) */}
+            {children}
          </ScrollView>
+
       )}
     </View>
   );

@@ -1,17 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Alert, Keyboard, Platform, LayoutAnimation, UIManager, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { StyleSheet, View, Text, Alert, Keyboard, Platform, LayoutAnimation, UIManager, TouchableOpacity } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
-import { Feather } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
+import { MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from './src/constants/colors';
 
 import locationData from './src/data/locations.json';
 import MapLayer from './src/components/MapLayer';
-import SearchBar from './src/components/SearchBar';
+import RoutePlanner from './src/components/RoutePlanner';
 import RouteBottomSheet from './src/components/RouteBottomSheet';
+import RoadConditionsPanel from './src/components/RoadConditionsPanel';
 import NetworkStatus from './src/components/NetworkStatus';
 import WeatherWidget from './src/components/WeatherWidget';
+import ErrorBoundary from './src/components/ErrorBoundary';
+
+import LoadingOverlay from './src/components/LoadingOverlay';
 import { geocodeLocation, getRoute } from './src/services/trafficApi';
 
 // Enable Animations
@@ -21,28 +26,47 @@ if (Platform.OS === 'android') {
   }
 }
 
-const BULAWAYO_COMPLETE_LOCATIONS = locationData;
+const LOCATIONS = locationData;
 const DEFAULT_COORDS = { lat: -20.1706, lon: 28.5583 };
 
 function MainApp() {
   const insets = useSafeAreaInsets();
   const webViewRef = useRef(null);
-  const [origin, setOrigin] = useState(DEFAULT_COORDS);
-  const [departureTime, setDepartureTime] = useState('NOW');
+
+  // --- Dual-Location State ---
+  const [originMode, setOriginMode] = useState('gps');       // 'gps' | 'manual'
+  const [gpsCoords, setGpsCoords] = useState(DEFAULT_COORDS); // Always-updating GPS
+  const [originCoords, setOriginCoords] = useState(null);     // Used for routing
+  const [destinationCoords, setDestinationCoords] = useState(null);
+
+  // --- Input Text State ---
+  const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
+  const [originSuggestions, setOriginSuggestions] = useState([]);
+  const [destinationSuggestions, setDestinationSuggestions] = useState([]);
+
+  // --- Route & Data State ---
   const [routes, setRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [weather, setWeather] = useState(null);
-  
-  // Sheet State
+  const [roadConditions, setRoadConditions] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // --- UI State ---
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  // Location Subscription
+  // --- Recent Searches ---
+  const [recentSearches, setRecentSearches] = useState([]);
+
+  // --- Refs ---
   const locationSubscription = useRef(null);
 
+  // ==========================================
+  // GPS Location Tracking
+  // ==========================================
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -51,28 +75,25 @@ function MainApp() {
         return;
       }
 
-      // Start Watching Position
       locationSubscription.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          timeInterval: 2000, 
+          timeInterval: 2000,
           distanceInterval: 10,
         },
         (location) => {
           const { latitude, longitude } = location.coords;
-          
-          // Check for mocked location outside bounds (Optional, but kept for consistency)
-          const isOutsideBulawayo = latitude > -19.0;
-          if (isOutsideBulawayo) {
-             // Only alert once or handle gracefully. For now, we trust the watch.
-             // If we want to mock, we'd override here. 
-             // Let's stick to real location for "Real-time" feature unless specific testing.
-             // We'll just update origin.
+          const newCoords = { lat: latitude, lon: longitude };
+
+          // Always update GPS reference
+          setGpsCoords(newCoords);
+
+          // Only update routing origin if in GPS mode
+          if (originMode === 'gps') {
+            setOriginCoords(newCoords);
           }
-          
-          setOrigin({ lat: latitude, lon: longitude });
-          
-          // Update Map Marker
+
+          // Always update blue dot on map
           const script = `
             if (typeof setUserLocation === 'function') {
               setUserLocation(${latitude}, ${longitude});
@@ -88,153 +109,339 @@ function MainApp() {
         locationSubscription.current.remove();
       }
     };
+  }, [originMode]);
+
+  // ==========================================
+  // Network Connectivity
+  // ==========================================
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+    return () => unsubscribe();
   }, []);
 
+  // ==========================================
+  // Autocomplete Filtering
+  // ==========================================
+  useEffect(() => {
+    if (originQuery.length > 2) {
+      const filtered = LOCATIONS.filter(loc =>
+        loc.name.toLowerCase().includes(originQuery.toLowerCase())
+      ).slice(0, 5);
+      setOriginSuggestions(filtered);
+    } else {
+      setOriginSuggestions([]);
+    }
+  }, [originQuery]);
+
+  useEffect(() => {
+    if (destinationQuery.length > 2) {
+      const filtered = LOCATIONS.filter(loc =>
+        loc.name.toLowerCase().includes(destinationQuery.toLowerCase())
+      ).slice(0, 5);
+      setDestinationSuggestions(filtered);
+    } else {
+      setDestinationSuggestions([]);
+    }
+  }, [destinationQuery]);
+
+  // ==========================================
+  // Origin Selection
+  // ==========================================
+  const handleOriginSelect = (item) => {
+    setOriginMode('manual');
+    setOriginCoords({ lat: item.lat, lon: item.lon });
+    setOriginQuery(item.name);
+    setOriginSuggestions([]);
+  };
+
+  const handleUseMyLocation = () => {
+    setOriginMode('gps');
+    setOriginCoords(gpsCoords);
+    setOriginQuery('');
+    setOriginSuggestions([]);
+  };
+
+  // ==========================================
+  // Destination Selection
+  // ==========================================
+  const handleDestinationSelect = (item) => {
+    setDestinationCoords({ lat: item.lat, lon: item.lon });
+    setDestinationQuery(item.name);
+    setDestinationSuggestions([]);
+  };
+
+  // ==========================================
+  // Swap Locations
+  // ==========================================
+  const swapLocations = () => {
+    const tempCoords = originCoords;
+    const tempQuery = originQuery || 'My Location';
+
+    if (destinationCoords) {
+      setOriginMode('manual');
+      setOriginCoords(destinationCoords);
+      setOriginQuery(destinationQuery);
+    }
+
+    if (tempCoords) {
+      setDestinationCoords(tempCoords);
+      setDestinationQuery(tempQuery === 'My Location' ? '' : tempQuery);
+    }
+  };
+
+  // ==========================================
+  // Route Search (CORE)
+  // ==========================================
+  const handleRouteSearch = async () => {
+    Keyboard.dismiss();
+    setOriginSuggestions([]);
+    setDestinationSuggestions([]);
+
+    // Resolve origin
+    let resolvedOrigin = originCoords || gpsCoords;
+    if (originMode === 'manual' && !originCoords && originQuery.length > 0) {
+      const known = LOCATIONS.find(p => p.name.toLowerCase() === originQuery.toLowerCase());
+      if (known) resolvedOrigin = { lat: known.lat, lon: known.lon };
+      else resolvedOrigin = await geocodeLocation(originQuery);
+    }
+
+    // Resolve destination
+    let resolvedDest = destinationCoords;
+    if (!resolvedDest && destinationQuery.length > 0) {
+      const known = LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
+      if (known) resolvedDest = { lat: known.lat, lon: known.lon };
+      else resolvedDest = await geocodeLocation(destinationQuery);
+    }
+
+    // --- Edge Cases ---
+    if (!resolvedOrigin) {
+      Alert.alert("Missing Origin", "Please enter a starting location or enable GPS.");
+      return;
+    }
+    if (!resolvedDest) {
+      Alert.alert("Missing Destination", "Please enter a destination.");
+      return;
+    }
+    if (
+      Math.abs(resolvedOrigin.lat - resolvedDest.lat) < 0.0005 &&
+      Math.abs(resolvedOrigin.lon - resolvedDest.lon) < 0.0005
+    ) {
+      Alert.alert("Same Location", "Origin and destination are the same. Please choose a different destination.");
+      return;
+    }
+
+    setLoading(true);
+    setHasSearched(true);
+    setRoutes([]);
+    setSelectedRoute(null);
+    setWeather(null);
+    setRoadConditions([]);
+    setIsSheetVisible(false);
+    setIsSheetExpanded(false);
+
+    try {
+      const { routes: processedRoutes, weather: weatherData, roadConditions: conditions } = await getRoute(resolvedOrigin, resolvedDest);
+
+      if (processedRoutes.length === 0) {
+        Alert.alert("No Routes", "Could not find any routes between these locations. Try different locations.");
+        setLoading(false);
+        return;
+      }
+
+      setRoutes(processedRoutes);
+      setWeather(weatherData);
+      setRoadConditions(conditions || []);
+
+      const best = processedRoutes[0];
+      setSelectedRoute(best);
+      setIsSheetVisible(true);
+
+      // Draw segmented route on map
+      drawRouteOnMap(best, resolvedDest);
+
+      // Cache recent search
+      if (destinationQuery) {
+        setRecentSearches(prev => {
+          const filtered = prev.filter(s => s.name !== destinationQuery);
+          return [{ name: destinationQuery, coords: resolvedDest }, ...filtered].slice(0, 5);
+        });
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to fetch routes. Please try again.");
+    }
+
+    setLoading(false);
+  };
+
+  // ==========================================
+  // Draw Route on Map (with segments)
+  // ==========================================
+  const drawRouteOnMap = (route, dest) => {
+    if (!route || !webViewRef.current) return;
+
+    // Build segmented GeoJSON
+    const currentPrediction = route.predictions?.[0];
+    const segments = currentPrediction?.segments;
+
+    const geoJson = {
+      type: 'Feature',
+      geometry: route.geometry,
+      properties: segments ? { segments } : {},
+    };
+
+    const destLat = dest?.lat || route.geometry.coordinates[route.geometry.coordinates.length - 1][1];
+    const destLon = dest?.lon || route.geometry.coordinates[route.geometry.coordinates.length - 1][0];
+
+    const script = `drawRoute(${JSON.stringify(geoJson)}, ${destLat}, ${destLon}, '${route.uiColor}'); true;`;
+    webViewRef.current.injectJavaScript(script);
+  };
+
+  // ==========================================
+  // Route Selection
+  // ==========================================
+  const handleRouteSelect = (route) => {
+    setSelectedRoute(route);
+    if (route && route.geometry && route.geometry.coordinates) {
+      const coords = route.geometry.coordinates;
+      const dest = {
+        lat: coords[coords.length - 1][1],
+        lon: coords[coords.length - 1][0],
+      };
+      drawRouteOnMap(route, dest);
+    }
+  };
+
+  // ==========================================
+  // UI Helpers
+  // ==========================================
   const toggleSheet = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setIsSheetExpanded(!isSheetExpanded);
   };
 
-  const handleRecenter = () => {
+  const handleLocateMe = () => {
     const script = `
       if (typeof map !== 'undefined') {
-        map.setView([${origin.lat}, ${origin.lon}], 15);
+        map.setView([${gpsCoords.lat}, ${gpsCoords.lon}], 16, { animate: true, duration: 0.5 });
       }
     `;
     webViewRef.current?.injectJavaScript(script);
   };
 
-  const handleSearch = async (coords = null, name = null) => {
-    setSuggestions([]);
-    Keyboard.dismiss();
-    setLoading(true);
-    // Keep existing search logic...
-    setRoutes([]);
-    setSelectedRoute(null);
-    setWeather(null);
-    setIsSheetVisible(false);
-    setIsSheetExpanded(false);
-
-    let target = coords;
-    if (!target) {
-      const known = BULAWAYO_COMPLETE_LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
-      if (known) target = { lat: known.lat, lon: known.lon };
-      else target = await geocodeLocation(destinationQuery);
-    }
-
-    if (target) {
-      const { routes: processedRoutes, weather: weatherData } = await getRoute(origin, target, departureTime);
-      setRoutes(processedRoutes);
-      setWeather(weatherData);
-
-      if (processedRoutes.length > 0) {
-        const best = processedRoutes[0];
-        setSelectedRoute(best);
-        setIsSheetVisible(true);
-        const script = `drawRoute(${JSON.stringify(best.geometry)}, ${target.lat}, ${target.lon}, '${best.uiColor}'); true;`;
-        webViewRef.current.injectJavaScript(script);
-      }
-    } else {
-      Alert.alert("Not Found", "Location not found.");
-    }
-    setLoading(false);
-  };
-
-  const handleTextChange = (text) => {
-    setDestinationQuery(text);
-    if (text.length > 2) {
-      const filtered = BULAWAYO_COMPLETE_LOCATIONS.filter(loc => 
-        loc.name.toLowerCase().includes(text.toLowerCase())
-      );
-      setSuggestions(filtered.slice(0, 5));
-    } else {
-      setSuggestions([]);
-    }
-  };
-
-  const handleRouteSelect = (route) => {
-    setSelectedRoute(route);
-    if (route && route.geometry && route.geometry.coordinates) {
-       const coords = route.geometry.coordinates;
-       const dest = coords[coords.length - 1];
-       const destLon = dest[0];
-       const destLat = dest[1];
-       const script = `drawRoute(${JSON.stringify(route.geometry)}, ${destLat}, ${destLon}, '${route.uiColor}'); true;`;
-       webViewRef.current?.injectJavaScript(script);
-    }
-  };
+  // ==========================================
+  // Render
+  // ==========================================
+  // Recent search quick-select handler
+  const handleRecentSelect = useCallback((item) => {
+    setDestinationQuery(item.name);
+    setDestinationCoords(item.coords);
+    setDestinationSuggestions([]);
+  }, []);
 
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
       <NetworkStatus style={{ top: insets.top + 10 }} />
-      <WeatherWidget weather={weather} />
-      <MapLayer 
-        ref={webViewRef} 
-        origin={origin}
+
+      <MapLayer
+        ref={webViewRef}
+        origin={gpsCoords}
         onLoadEnd={() => {
-           // Initial set
-           webViewRef.current?.injectJavaScript(`setUserLocation(${origin.lat}, ${origin.lon}); true;`);
+          webViewRef.current?.injectJavaScript(`setUserLocation(${gpsCoords.lat}, ${gpsCoords.lon}); true;`);
         }}
       />
-      
-      {/* RECENTER BUTTON */}
-      <TouchableOpacity 
-        style={[styles.recenterBtn, { bottom: isSheetVisible ? (isSheetExpanded ? '70%' : 260) : 100 }]} 
-        onPress={handleRecenter}
-        activeOpacity={0.8}
+
+      {/* WEATHER WIDGET — positioned dynamically below RoutePlanner */}
+      <WeatherWidget weather={weather} topOffset={insets.top + 185} />
+
+
+
+      {/* LOADING OVERLAY (during search) */}
+      <LoadingOverlay visible={loading} />
+
+      {/* LOCATE ME FAB */}
+      <TouchableOpacity
+        style={[styles.locateFab, { bottom: isSheetVisible ? (isSheetExpanded ? '70%' : 260) : 100 }]}
+        onPress={handleLocateMe}
+        activeOpacity={0.85}
       >
-        <Feather name="crosshair" size={24} color={COLORS.primary} />
+        <MaterialIcons name="my-location" size={22} color="#fff" />
+        <Text style={styles.locateFabText}>Locate Me</Text>
       </TouchableOpacity>
 
-      <SearchBar 
-        // ... (props remain same)
+      {/* ROUTE PLANNER */}
+      <RoutePlanner
+        originQuery={originQuery}
+        setOriginQuery={setOriginQuery}
         destinationQuery={destinationQuery}
-        setDestinationQuery={handleTextChange} 
-        suggestions={suggestions}
-        setSuggestions={setSuggestions}
-        setRoutes={setRoutes}
-        setIsSheetVisible={setIsSheetVisible}
-        handleSearch={handleSearch}
+        setDestinationQuery={setDestinationQuery}
+        originSuggestions={originSuggestions}
+        destinationSuggestions={destinationSuggestions}
+        onOriginSelect={handleOriginSelect}
+        onDestinationSelect={handleDestinationSelect}
+        onUseMyLocation={handleUseMyLocation}
+        onSwap={swapLocations}
+        onSearch={handleRouteSearch}
         loading={loading}
-        departureTime={departureTime}
-        setDepartureTime={setDepartureTime}
-        topInset={insets.top} 
+        isConnected={isConnected}
+        topInset={insets.top}
+        recentSearches={recentSearches}
+        onRecentSelect={handleRecentSelect}
       />
 
-      <RouteBottomSheet 
+      {/* BOTTOM SHEET */}
+      <RouteBottomSheet
         selectedRoute={selectedRoute}
         isSheetVisible={isSheetVisible}
         isSheetExpanded={isSheetExpanded}
         toggleSheet={toggleSheet}
         routes={routes}
         handleRouteSelect={handleRouteSelect}
-      />
+      >
+        <RoadConditionsPanel
+          roadConditions={roadConditions}
+          visible={isSheetExpanded}
+        />
+      </RouteBottomSheet>
     </View>
   );
 }
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <MainApp />
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <MainApp />
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  recenterBtn: {
+  locateFab: {
     position: 'absolute',
     right: 20,
-    backgroundColor: 'white',
-    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     borderRadius: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
     zIndex: 10,
-  }
+    gap: 8,
+  },
+  locateFabText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
 });
