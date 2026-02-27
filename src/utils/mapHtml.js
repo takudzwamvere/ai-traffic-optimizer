@@ -41,9 +41,9 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       margin-right: 8px;
     }
     
-    /* Position the control below the React Native Search Bar (approx 100px) */
+    /* Position the control below the React Native Search Bar (approx 180px) */
     .leaflet-top {
-      top: 100px !important;
+      top: 180px !important;
     }
     /* Make the toggle button larger and more "button-like" for mobile */
     .leaflet-control-layers-toggle {

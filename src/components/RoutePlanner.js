@@ -17,7 +17,7 @@ export default function RoutePlanner({
   onSearch,
   loading,
   isConnected,
-  topInset = 50,
+  topInset = 0,
   recentSearches = [],
   onRecentSelect,
 }) {

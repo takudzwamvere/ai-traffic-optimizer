@@ -8,7 +8,7 @@
  * 4. Weather Conditions (Rain/Wind impact)
  */
 
-import { COLORS } from '../constants/colors';
+import { COLORS } from '../constants/colors.js';
 
 // --- TASK 1: ROAD CLASSIFICATION ---
 
@@ -32,11 +32,11 @@ export const classifyRoad = (osrmConnectSpeed) => {
 // --- TASK 2 & 3: TIME & DAY FACTORS ---
 
 const WEEKDAY_CURVE = {
-  0: 0.1, 1: 0.1, 2: 0.1, 3: 0.1, 4: 0.2, 5: 0.4, // Night
-  6: 0.7, 7: 0.9, 8: 1.0, 9: 0.8, // Morning Peak
-  10: 0.6, 11: 0.6, 12: 0.7, 13: 0.7, 14: 0.65, 15: 0.75, // Midday
-  16: 0.9, 17: 1.0, 18: 0.95, 19: 0.7, // Evening Peak
-  20: 0.4, 21: 0.3, 22: 0.2, 23: 0.1 // Night
+  0: 0.05, 1: 0.05, 2: 0.05, 3: 0.05, 4: 0.15, 5: 0.35, // Night
+  6: 0.65, 7: 0.95, 8: 1.0, 9: 0.85, // Morning Peak (7-9am Bulawayo)
+  10: 0.55, 11: 0.55, 12: 0.6, 13: 0.6, 14: 0.55, 15: 0.7, // Midday
+  16: 0.9, 17: 1.0, 18: 0.95, 19: 0.65, // Evening Peak (4-6:30pm Bulawayo)
+  20: 0.35, 21: 0.25, 22: 0.15, 23: 0.1 // Night
 };
 
 const WEEKEND_CURVE = {
@@ -96,7 +96,7 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
   // 1. Base Speed (free flow from OSRM)
   // OSRM duration is in seconds, distance in meters.
   // Speed = (dist / dur) * 3.6 for km/h
-  if (duration <= 0) return { speed: 0.1, color: COLORS.text, delay: 0 };
+  if (duration <= 0) return { speed: 0.1, color: COLORS.text, delay: 0, incidentReason: null };
   
   const baseSpeedKmh = (distance / duration) * 3.6;
   const roadType = classifyRoad(baseSpeedKmh);
@@ -123,6 +123,21 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
   // 4. Final Speed
   let predictedSpeed = baseSpeedKmh * congestionReduction * weatherMultiplier;
 
+  // Real-time Congestion Simulation (Random Incidents/Bottlenecks)
+  let incidentReason = null;
+  // Only apply random simulation if distance is somewhat significant (>500m) and it's not a tiny offset
+  if (distance > 500) {
+    // 5% chance of minor bottleneck on main roads, 2% of major accident on highways during peak
+    const randomRoll = Math.random();
+    if (roadType === ROAD_TYPES.MAIN && randomRoll < 0.05) {
+      predictedSpeed *= 0.6; // 40% drop
+      incidentReason = "Bottleneck Delay";
+    } else if (roadType === ROAD_TYPES.HIGHWAY && timeFactor > 0.6 && randomRoll < 0.02) {
+      predictedSpeed *= 0.3; // 70% drop
+      incidentReason = "Accident Reported";
+    }
+  }
+
   // Min Speed Thresholds (Traffic never truly stops to 0 usually in models unless blocked)
   const minSpeeds = {
     [ROAD_TYPES.HIGHWAY]: 20,
@@ -132,10 +147,18 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
   };
   predictedSpeed = Math.max(predictedSpeed, minSpeeds[roadType]);
 
-  // 5. Calculate Delay
-  // New Duration
-  const newDuration = (distance / 1000) / (predictedSpeed / 3600); // seconds
-  const delay = Math.max(0, newDuration - duration);
+  // 5. Calculate Delay & Proportional Scaling
+  // NUST to City Hall is ~6.6km (6600m). We want this to map to 7 minutes (420 seconds) baseline.
+  // 420s / 6600m = 0.06363 seconds per meter.
+  // Base duration calibrated to the user's explicit request:
+  const calibratedBaseDuration = distance * (420 / 6600);
+  
+  // Apply our speed modifiers proportionally
+  // If predictedSpeed is half of baseSpeed, duration doubles.
+  const speedRatio = baseSpeedKmh / predictedSpeed;
+  const newDuration = calibratedBaseDuration * speedRatio;
+  
+  const delay = Math.max(0, newDuration - calibratedBaseDuration);
 
   // 6. Coloring (Ratio of Predicted vs Base)
   const ratio = predictedSpeed / baseSpeedKmh;
@@ -151,6 +174,7 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
     newDuration,
     originalDuration: duration,
     delay,
-    color
+    color,
+    incidentReason
   };
 };

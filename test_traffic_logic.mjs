@@ -49,17 +49,17 @@ if (result.predictedSpeed < 60 && result.color !== '#4CAF50') {
 }
 
 // TEST 4: Forced 3 Routes
-console.log("\nTEST 4: Force 3 Routes");
+console.log("\nTEST 4: Strict Uniqueness Testing");
 const singleRouteInput = [mockRoute];
-const processed = ensureThreeRoutes(singleRouteInput, mockWeatherData, 'NOW');
+// Mock weather, origin, destination
+const processedData = ensureThreeRoutes(singleRouteInput, mockWeatherData, 'Origin', 'Dest');
+const processed = processedData.routes;
 
-if (processed.length === 3) {
-    console.log("✅ Successfully forced 3 routes from 1 input.");
+if (processed.length === 1) {
+    console.log("✅ Successfully returned 1 distinct route without fake padding.");
     console.log(`   Route 1: ${processed[0].uiLabel} (${processed[0].uiReason})`);
-    console.log(`   Route 2: ${processed[1].uiLabel} - Simulated: ${processed[1].isSimulated}`);
-    console.log(`   Route 3: ${processed[2].uiLabel} - Simulated: ${processed[2].isSimulated}`);
 } else {
-    console.error(`❌ Failed to force 3 routes. Got ${processed.length}`);
+    console.error(`❌ Failed route processing. Got ${processed.length}`);
 }
 
 // TEST 5: Future Predictions Structure

@@ -47,10 +47,13 @@ export default function RouteBottomSheet({
           <View style={styles.routeRow}>
               <View style={styles.routeInfo}>
                 {/* Route Info Row */}
-                <View style={{flexDirection:'row', alignItems:'center'}}>
+                <View style={{flexDirection:'row', alignItems:'center', flexWrap: 'wrap'}}>
                   <Text style={[styles.cardTitle, {color: selectedRoute.uiColor}]}>{selectedRoute.uiLabel}</Text>
                   <View style={styles.dotSeparator}/>
                   <Text style={styles.cardReason}>{selectedRoute.uiReason}</Text>
+                  {selectedRoute.corridorName && (
+                    <Text style={styles.corridorName}>{selectedRoute.corridorName}</Text>
+                  )}
                 </View>
                 
                 {/* Time & Distance */}
@@ -96,6 +99,9 @@ export default function RouteBottomSheet({
                         </View>
                         <View style={{alignItems:'flex-end'}}>
                             <Text style={[styles.altLabel, {color: route.uiColor}]}>{route.uiLabel}</Text>
+                            {route.corridorName && (
+                              <Text style={styles.altCorridorName}>{route.corridorName}</Text>
+                            )}
                             {isSelected && <Feather name="check" size={16} color={COLORS.text} style={{marginTop:4}} />}
                         </View>
                     </View>
@@ -152,5 +158,7 @@ const styles = StyleSheet.create({
   altRouteCard: { padding: 16, backgroundColor: '#fff', borderRadius: 15, marginBottom: 10, borderWidth: 1, borderColor: '#F0F0F0' },
   altDuration: { fontSize: 18, fontWeight: '600' },
   altDistance: { fontSize: 13, color: '#888', marginTop: 2 },
-  altLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }
+  altLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  corridorName: { fontSize: 11, color: '#007AFF', fontWeight: '600', marginLeft: 8 },
+  altCorridorName: { fontSize: 10, color: '#007AFF', fontWeight: '500', marginTop: 2 },
 });

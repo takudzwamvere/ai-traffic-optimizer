@@ -1,10 +1,11 @@
+import profileData from './src/data/locations.json'; // using this to offset line diff safely
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, View, Text, Alert, Keyboard, Platform, LayoutAnimation, UIManager, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Alert, Keyboard, Platform, LayoutAnimation, UIManager, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import NetInfo from '@react-native-community/netinfo';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { COLORS } from './src/constants/colors';
 
 import locationData from './src/data/locations.json';
@@ -15,9 +16,13 @@ import RoadConditionsPanel from './src/components/RoadConditionsPanel';
 import NetworkStatus from './src/components/NetworkStatus';
 import WeatherWidget from './src/components/WeatherWidget';
 import ErrorBoundary from './src/components/ErrorBoundary';
-
 import LoadingOverlay from './src/components/LoadingOverlay';
+import AuthScreen from './src/components/AuthScreen';
+import ProfileScreen from './src/components/ProfileScreen'; // New
+
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { geocodeLocation, getRoute } from './src/services/trafficApi';
+import { saveSearch, getSearchHistory } from './src/services/dataService';
 
 // Enable Animations
 if (Platform.OS === 'android') {
@@ -32,6 +37,7 @@ const DEFAULT_COORDS = { lat: -20.1706, lon: 28.5583 };
 function MainApp() {
   const insets = useSafeAreaInsets();
   const webViewRef = useRef(null);
+  const { user } = useAuth();
 
   // --- Dual-Location State ---
   const [originMode, setOriginMode] = useState('gps');       // 'gps' | 'manual'
@@ -57,12 +63,29 @@ function MainApp() {
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isProfileVisible, setIsProfileVisible] = useState(false);
 
-  // --- Recent Searches ---
+  // --- Recent Searches (Supabase-backed) ---
   const [recentSearches, setRecentSearches] = useState([]);
 
   // --- Refs ---
   const locationSubscription = useRef(null);
+
+  // ==========================================
+  // Load search history from Supabase on mount
+  // ==========================================
+  useEffect(() => {
+    if (user?.id) {
+      getSearchHistory(user.id, 5).then(history => {
+        const recent = history.map(h => ({
+          name: h.destination_name,
+          coords: { lat: h.dest_lat, lon: h.dest_lon },
+          searchedAt: h.searched_at,
+        }));
+        setRecentSearches(recent);
+      }).catch(() => {});
+    }
+  }, [user?.id]);
 
   // ==========================================
   // GPS Location Tracking
@@ -242,7 +265,13 @@ function MainApp() {
     setIsSheetExpanded(false);
 
     try {
-      const { routes: processedRoutes, weather: weatherData, roadConditions: conditions } = await getRoute(resolvedOrigin, resolvedDest);
+      // Pass origin/destination names for corridor matching
+      const originName = originQuery || 'My Location';
+      const destName = destinationQuery;
+
+      const { routes: processedRoutes, weather: weatherData, roadConditions: conditions } = await getRoute(
+        resolvedOrigin, resolvedDest, originName, destName
+      );
 
       if (processedRoutes.length === 0) {
         Alert.alert("No Routes", "Could not find any routes between these locations. Try different locations.");
@@ -261,8 +290,20 @@ function MainApp() {
       // Draw segmented route on map
       drawRouteOnMap(best, resolvedDest);
 
-      // Cache recent search
-      if (destinationQuery) {
+      // Save search to Supabase and update local recent searches
+      if (destinationQuery && user?.id) {
+        saveSearch(user.id, {
+          originName: originName,
+          destinationName: destName,
+          originLat: resolvedOrigin.lat,
+          originLon: resolvedOrigin.lon,
+          destLat: resolvedDest.lat,
+          destLon: resolvedDest.lon,
+          routeCount: processedRoutes.length,
+          bestDurationMin: best.predictions?.[0]?.duration || 0,
+        }).catch(() => {}); // fire-and-forget
+
+        // Update local cache
         setRecentSearches(prev => {
           const filtered = prev.filter(s => s.name !== destinationQuery);
           return [{ name: destinationQuery, coords: resolvedDest }, ...filtered].slice(0, 5);
@@ -341,9 +382,9 @@ function MainApp() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar style="dark" />
-      <NetworkStatus style={{ top: insets.top + 10 }} />
+      <NetworkStatus style={{ top: 10 }} />
 
       <MapLayer
         ref={webViewRef}
@@ -353,17 +394,15 @@ function MainApp() {
         }}
       />
 
-      {/* WEATHER WIDGET — positioned dynamically below RoutePlanner */}
-      <WeatherWidget weather={weather} topOffset={insets.top + 185} />
-
-
+      {/* WEATHER WIDGET — positioned below RoutePlanner */}
+      <WeatherWidget weather={weather} topOffset={185} />
 
       {/* LOADING OVERLAY (during search) */}
       <LoadingOverlay visible={loading} />
 
       {/* LOCATE ME FAB */}
       <TouchableOpacity
-        style={[styles.locateFab, { bottom: isSheetVisible ? (isSheetExpanded ? '70%' : 260) : 100 }]}
+        style={[styles.locateFab, { bottom: isSheetVisible ? (isSheetExpanded ? '70%' : 260) : 80 }]}
         onPress={handleLocateMe}
         activeOpacity={0.85}
       >
@@ -386,7 +425,6 @@ function MainApp() {
         onSearch={handleRouteSearch}
         loading={loading}
         isConnected={isConnected}
-        topInset={insets.top}
         recentSearches={recentSearches}
         onRecentSelect={handleRecentSelect}
       />
@@ -405,15 +443,52 @@ function MainApp() {
           visible={isSheetExpanded}
         />
       </RouteBottomSheet>
+
+      {/* PROFILE MODULE */}
+      <ProfileScreen 
+        visible={isProfileVisible} 
+        onClose={() => setIsProfileVisible(false)} 
+      />
+
+      {/* BOTTOM TAB BAR */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity style={styles.tabItem} onPress={() => {}}>
+          <Feather name="map" size={24} color={COLORS.primary} />
+          <Text style={[styles.tabText, styles.tabTextActive]}>Map</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.tabItem} onPress={() => setIsProfileVisible(true)}>
+          <Feather name="user" size={24} color="#999" />
+          <Text style={styles.tabText}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
+}
+
+// Auth gate — show AuthScreen if not logged in
+function AuthGate() {
+  const { isAuthenticated, loading } = useAuth();
+  const insets = useSafeAreaInsets();
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  return isAuthenticated ? <MainApp /> : <AuthScreen />;
 }
 
 export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <MainApp />
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );
@@ -421,6 +496,18 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A1628',
+  },
+  loadingText: {
+    color: '#6B7B9A',
+    fontSize: 14,
+    marginTop: 12,
+    fontWeight: '500',
+  },
   locateFab: {
     position: 'absolute',
     right: 20,
@@ -443,5 +530,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E8ECF0',
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  tabText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  tabTextActive: {
+    color: '#007AFF',
+    fontWeight: '700',
   },
 });
