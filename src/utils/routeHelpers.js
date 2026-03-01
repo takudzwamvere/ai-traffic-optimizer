@@ -182,23 +182,32 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
     [0, 15, 30].forEach(offset => {
       const result = processRouteSegments(route, weatherData, offset);
 
-      // --- GUARANTEED BASELINE OVERRIDE ---
-      // The user explicitly requested NUST (6.6km) to equal exactly 7 minutes.
-      // 420 seconds / 6600 meters = 0.06363 sec/meter
+      // Calibrated baseline: NUST to City Hall = 7 min per 6.6km
       const calibratedBaseSeconds = route.distance * (420 / 6600);
-      
-      // Delay factors scaled down to zero per user's strict requirement for 7 minute baseline
-      let duration = calibratedBaseSeconds;
 
-      // Peak hour UI updates are handled but we won't artificially multiply 
-      // the final duration strictly so it abides by the 7-minute proportionality rule.
+      // *** THE REAL FIX: apply the computed delay to each time slot ***
+      // Each offset now produces a genuinely different ETA based on:
+      //   - Time-of-day traffic factor (interpolated to the minute)
+      //   - Rush-hour transition amplifier
+      //   - Deterministic seeded incident randomness
+      //   - Weather multiplier
+      const duration = calibratedBaseSeconds + result.totalDelay;
+      const minutes = Math.max(1, Math.round(duration / 60));
 
-      const minutes = Math.round(duration / 60);
+      // Compute avg predicted speed for summary context
+      const avgSpeed = result.roadConditions.length > 0
+        ? result.roadConditions.reduce((a, c) => a + c.predictedSpeed, 0) / result.roadConditions.length
+        : 0;
+
       predictions[offset] = {
         duration: minutes,
-        formattedDuration: minutes > 60 ? `${Math.floor(minutes/60)}h ${minutes%60}m` : `${minutes} min`,
+        formattedDuration: minutes > 60
+          ? `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+          : `${minutes} min`,
         segments: result.segments,
         color: result.segments.length > 0 ? result.segments[0].color : COLORS.primary,
+        totalDelay: result.totalDelay,
+        avgPredictedSpeed: Math.round(avgSpeed),
       };
 
       if (offset === 0) {

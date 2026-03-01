@@ -1,6 +1,6 @@
 import profileData from './src/data/locations.json'; // using this to offset line diff safely
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, View, Text, Alert, Keyboard, Platform, LayoutAnimation, UIManager, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, Alert, Keyboard, Platform, LayoutAnimation, UIManager, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
@@ -23,7 +23,7 @@ import ProfileScreen from './src/components/ProfileScreen';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { geocodeLocation, getRoute } from './src/services/trafficApi';
-import { saveSearch, getSearchHistory } from './src/services/dataService';
+import { saveSearch, getSearchHistory, getProfile } from './src/services/dataService';
 
 // Enable Animations
 if (Platform.OS === 'android') {
@@ -72,6 +72,20 @@ function MainApp() {
 
   // --- Recent Searches (Supabase-backed) ---
   const [recentSearches, setRecentSearches] = useState([]);
+
+  // --- Profile Avatar (for tab bar) ---
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState(null);
+
+  const loadProfileAvatar = useCallback(async () => {
+    if (!user?.id) return;
+    const p = await getProfile(user.id);
+    console.log('[Avatar] getProfile returned:', JSON.stringify(p));
+    setProfileAvatarUrl(p?.avatar_url || null);
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadProfileAvatar();
+  }, [loadProfileAvatar]);
 
   // --- Refs ---
   const locationSubscription = useRef(null);
@@ -402,9 +416,9 @@ function MainApp() {
   }, []);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <StatusBar style="dark" />
-      <NetworkStatus style={{ top: 10 }} />
+    <View style={styles.container}>
+      <StatusBar style="dark" translucent backgroundColor="transparent" />
+
 
       <MapLayer
         ref={webViewRef}
@@ -418,8 +432,8 @@ function MainApp() {
       {/* MAP LOADING OVERLAY — real tile-load detection via Leaflet event */}
       <MapLoadingOverlay visible={!mapTilesLoaded} />
 
-      {/* WEATHER WIDGET — positioned below RoutePlanner */}
-      <WeatherWidget weather={weather} topOffset={185} />
+      {/* WEATHER WIDGET — below RoutePlanner card */}
+      <WeatherWidget weather={weather} topOffset={insets.top + 260} />
 
       {/* LOADING OVERLAY (during search) */}
       <LoadingOverlay visible={loading} />
@@ -434,7 +448,7 @@ function MainApp() {
         <Text style={styles.locateFabText}>Locate Me</Text>
       </TouchableOpacity>
 
-      {/* ROUTE PLANNER */}
+      {/* ROUTE PLANNER — floating card below status bar */}
       <RoutePlanner
         originQuery={originQuery}
         setOriginQuery={setOriginQuery}
@@ -451,6 +465,7 @@ function MainApp() {
         isConnected={isConnected}
         recentSearches={recentSearches}
         onRecentSelect={handleRecentSelect}
+        topInset={insets.top}
       />
 
       {/* BOTTOM SHEET */}
@@ -474,17 +489,31 @@ function MainApp() {
       {/* PROFILE MODULE */}
       <ProfileScreen 
         visible={isProfileVisible} 
-        onClose={() => setIsProfileVisible(false)} 
+        onClose={() => {
+          setIsProfileVisible(false);
+          loadProfileAvatar(); // Refresh avatar in tab bar after editing
+        }} 
       />
 
-      {/* BOTTOM TAB BAR */}
-      <View style={styles.tabBar}>
+      {/* BOTTOM TAB BAR — respects home indicator on iPhone */}
+      <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <TouchableOpacity style={styles.tabItem} onPress={() => {}}>
           <Feather name="map" size={24} color={COLORS.primary} />
           <Text style={[styles.tabText, styles.tabTextActive]}>Map</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.tabItem} onPress={() => setIsProfileVisible(true)}>
-          <Feather name="user" size={24} color="#999" />
+          {profileAvatarUrl ? (
+            <Image
+              source={{ uri: profileAvatarUrl }}
+              style={styles.tabAvatar}
+              onError={(e) => {
+                console.warn('[Avatar] Image failed to load:', e.nativeEvent.error);
+                setProfileAvatarUrl(null); // fall back to icon
+              }}
+            />
+          ) : (
+            <Feather name="user" size={24} color="#999" />
+          )}
           <Text style={styles.tabText}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -582,5 +611,12 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#007AFF',
     fontWeight: '700',
+  },
+  tabAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
 });

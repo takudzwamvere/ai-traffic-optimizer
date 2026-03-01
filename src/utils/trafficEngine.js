@@ -49,18 +49,74 @@ const WEEKEND_CURVE = {
 
 export const getTimeTrafficFactor = (date = new Date()) => {
   const hour = date.getHours();
-  const day = date.getDay(); // 0 = Sun, 6 = Sat
+  const minute = date.getMinutes();
+  const day = date.getDay();
   const isWeekend = (day === 0 || day === 6);
 
   const curve = isWeekend ? WEEKEND_CURVE : WEEKDAY_CURVE;
-  let factor = curve[hour] || 0.1;
+  const currentFactor = curve[hour] || 0.1;
+  const nextFactor = curve[(hour + 1) % 24] || 0.1;
+
+  // INTERPOLATE between current hour and next hour based on minutes
+  // This makes a prediction at 3:50 PM meaningfully different from 4:10 PM
+  const minuteProgress = minute / 60;
+  let factor = currentFactor + (nextFactor - currentFactor) * minuteProgress;
 
   // Friday Evening Boost
   if (day === 5 && hour >= 15 && hour <= 19) {
-    factor = Math.min(1.0, factor + 0.1); 
+    factor = Math.min(1.0, factor + 0.1);
   }
 
-  return factor; // 0.0 (Empty) to 1.0 (Gridlock potential)
+  return factor;
+};
+
+/**
+ * Detects how much extra penalty to apply based on approaching rush-hour transitions.
+ * Returns a multiplier > 1.0 when near a peak boundary (amplifies the congestion reduction).
+ */
+export const getTransitionMultiplier = (date = new Date()) => {
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  const day = date.getDay();
+  const isWeekend = (day === 0 || day === 6);
+  if (isWeekend) return 1.0; // Weekends have no sharp peak transitions
+
+  const minuteOfDay = hour * 60 + minute;
+
+  // Morning rush: 6:30–9:00 (390–540 mins)
+  // Evening rush: 15:45–18:30 (945–1110 mins)
+  // Entering rush (approaching peak) → amplify congestion
+  // Leaving rush (departing peak) → reduce congestion toward normal
+
+  // Morning approach: 6:30–7:30
+  if (minuteOfDay >= 390 && minuteOfDay < 450) {
+    const progress = (minuteOfDay - 390) / 60;
+    return 1.0 + progress * 0.5; // Up to 1.5× penalty amplification
+  }
+  // Morning peak: 7:30–9:00
+  if (minuteOfDay >= 450 && minuteOfDay < 540) {
+    return 1.4; // Strong amplification at peak
+  }
+  // Morning fade: 9:00–10:00
+  if (minuteOfDay >= 540 && minuteOfDay < 600) {
+    const progress = (minuteOfDay - 540) / 60;
+    return 1.4 - progress * 0.4;
+  }
+  // Evening approach: 15:45–16:30
+  if (minuteOfDay >= 945 && minuteOfDay < 990) {
+    const progress = (minuteOfDay - 945) / 45;
+    return 1.0 + progress * 0.55;
+  }
+  // Evening peak: 16:30–18:00
+  if (minuteOfDay >= 990 && minuteOfDay < 1080) {
+    return 1.45;
+  }
+  // Evening fade: 18:00–19:00
+  if (minuteOfDay >= 1080 && minuteOfDay < 1140) {
+    const progress = (minuteOfDay - 1080) / 60;
+    return 1.45 - progress * 0.45;
+  }
+  return 1.0;
 };
 
 // --- TASK 4: WEATHER IMPACT ---
@@ -101,21 +157,22 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
   const baseSpeedKmh = (distance / duration) * 3.6;
   const roadType = classifyRoad(baseSpeedKmh);
 
-  // 2. Traffic Factor (Availability to handle capacity)
-  // Add offset to current time
+  // 2. Traffic Factor — interpolated and transition-amplified
   const predictionTime = new Date(date.getTime() + (timeOffset * 60000));
-  const timeFactor = getTimeTrafficFactor(predictionTime); 
-  
-  // Specific Road Sensitivity
-  // Highways drop less speed per traffic unit than local roads
+  const timeFactor = getTimeTrafficFactor(predictionTime);
+  const transitionMult = getTransitionMultiplier(predictionTime);
+
+  // Specific Road Sensitivity — amplified by transition phase
   let congestionReduction = 1.0;
   if (roadType === ROAD_TYPES.HIGHWAY) {
-    congestionReduction = 1.0 - (timeFactor * 0.4); // Max 40% slowdown
+    congestionReduction = 1.0 - (timeFactor * 0.4 * transitionMult);
   } else if (roadType === ROAD_TYPES.MAIN) {
-    congestionReduction = 1.0 - (timeFactor * 0.6); // Max 60% slowdown
+    congestionReduction = 1.0 - (timeFactor * 0.6 * transitionMult);
   } else {
-    congestionReduction = 1.0 - (timeFactor * 0.7); // Max 70% slowdown
+    congestionReduction = 1.0 - (timeFactor * 0.7 * transitionMult);
   }
+  // Clamp so we never get negative reduction
+  congestionReduction = Math.max(0.05, congestionReduction);
 
   // 3. Weather
   const weatherMultiplier = getWeatherImpact(weatherData, roadType);
@@ -123,18 +180,18 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
   // 4. Final Speed
   let predictedSpeed = baseSpeedKmh * congestionReduction * weatherMultiplier;
 
-  // Real-time Congestion Simulation (Random Incidents/Bottlenecks)
+  // Real-time Congestion Simulation — deterministic seeded randomness
+  // Seed uses timeOffset + distance so each time slot + road = unique but stable result
   let incidentReason = null;
-  // Only apply random simulation if distance is somewhat significant (>500m) and it's not a tiny offset
   if (distance > 500) {
-    // 5% chance of minor bottleneck on main roads, 2% of major accident on highways during peak
-    const randomRoll = Math.random();
+    const seed = Math.sin((timeOffset * 1000 + distance) * 9301 + 49297) * 233280;
+    const randomRoll = seed - Math.floor(seed);
     if (roadType === ROAD_TYPES.MAIN && randomRoll < 0.05) {
-      predictedSpeed *= 0.6; // 40% drop
-      incidentReason = "Bottleneck Delay";
+      predictedSpeed *= 0.6;
+      incidentReason = 'Bottleneck Delay';
     } else if (roadType === ROAD_TYPES.HIGHWAY && timeFactor > 0.6 && randomRoll < 0.02) {
-      predictedSpeed *= 0.3; // 70% drop
-      incidentReason = "Accident Reported";
+      predictedSpeed *= 0.3;
+      incidentReason = 'Accident Reported';
     }
   }
 

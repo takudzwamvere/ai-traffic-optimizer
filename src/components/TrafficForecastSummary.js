@@ -2,107 +2,51 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
-import { getTimeTrafficFactor } from '../utils/trafficEngine';
-
-/**
- * Generate a plain-English traffic forecast summary.
- * Uses: best route's label, corridor name, time factor, weather, departure offset.
- * NOT hardcoded — text is assembled dynamically from route data.
- */
-function generateSummary(bestRoute, departureMins, weather) {
-  if (!bestRoute) return null;
-
-  const now = new Date();
-  const futureTime = new Date(now.getTime() + departureMins * 60000);
-  const futureFactor = getTimeTrafficFactor(futureTime);
-  const nowFactor = getTimeTrafficFactor(now);
-
-  // Build time phrase
-  let timePhrase;
-  if (departureMins === 0) {
-    timePhrase = 'If you leave now';
-  } else if (departureMins < 60) {
-    timePhrase = `If you leave in ${departureMins} minutes`;
-  } else {
-    const h = Math.floor(departureMins / 60);
-    const m = departureMins % 60;
-    timePhrase = `If you leave in ${h}h ${m > 0 ? `${m}m` : ''}`.trim();
-  }
-
-  // Route via phrase
-  const viaPhrase = bestRoute.corridorName
-    ? `, the fastest route via ${bestRoute.corridorName}`
-    : ', the fastest available route';
-
-  // Congestion description for best route
-  let bestCondition;
-  if (bestRoute.uiColor === COLORS.primary) {
-    bestCondition = 'is expected to have clear roads with minimal delays';
-  } else if (bestRoute.uiColor === COLORS.warning) {
-    bestCondition = 'may experience moderate congestion, adding a few minutes to your trip';
-  } else {
-    bestCondition = 'is expected to face heavy traffic';
-  }
-
-  // Peak hour warning
-  let peakNote = '';
-  const isPeakNow = nowFactor >= 0.85;
-  const isPeakFuture = futureFactor >= 0.85;
-  const trafficimp = futureFactor > nowFactor;
-
-  if (departureMins > 0 && isPeakFuture && !isPeakNow) {
-    peakNote = ' Rush hour will be in effect by your planned departure, so alternative routes may face heavy congestion.';
-  } else if (departureMins > 0 && isPeakNow && !isPeakFuture) {
-    peakNote = ' Traffic is expected to ease significantly by the time you plan to leave.';
-  } else if (trafficimp && futureFactor > 0.7) {
-    peakNote = ' Congestion on alternative routes may worsen as more traffic builds up.';
-  }
-
-  // Weather note
-  let weatherNote = '';
-  if (weather) {
-    if (weather.code >= 95) {
-      weatherNote = ' ⚠️ Storm conditions are active — all routes will be significantly slower than usual.';
-    } else if (weather.code >= 61 || weather.rain > 2.0) {
-      weatherNote = ' Rain is reducing speeds across all routes. Allow extra time.';
-    } else if (weather.code >= 51 || weather.rain > 0.5) {
-      weatherNote = ' Light drizzle may slightly reduce speeds on narrow roads.';
-    }
-  }
-
-  // Confidence note
-  const confidence = bestRoute.confidenceLevel ? ` (${bestRoute.confidenceLevel}% confidence)` : '';
-
-  return `${timePhrase}${viaPhrase} ${bestCondition}${confidence}.${peakNote}${weatherNote}`;
-}
+import { generateTrafficNarrative, detectTrend } from '../utils/trafficNarrativeEngine';
 
 /**
  * TrafficForecastSummary
  * 
- * Displays a dynamic plain-language summary of expected traffic conditions
- * for the user's selected departure time. Text is generated from live route
- * and engine data — nothing is hardcoded.
+ * Displays an AI-generated plain-English traffic forecast.
+ * The narrative is produced by trafficNarrativeEngine.js —
+ * it varies based on time of day, rush-hour phase, weather,
+ * route speed trends, and departure offset.
+ * 
+ * Nothing is hardcoded. Every sentence is context-selected
+ * from phrase pools seeded by the current situation.
  */
 export default function TrafficForecastSummary({ routes, departureMins, weather }) {
   const bestRoute = routes?.[0];
-  const summary = generateSummary(bestRoute, departureMins, weather);
+  if (!bestRoute) return null;
 
-  if (!summary) return null;
+  const narrative = generateTrafficNarrative(bestRoute, departureMins, weather);
+  if (!narrative) return null;
 
-  const iconColor = bestRoute?.uiColor || COLORS.primary;
+  const trend = detectTrend(bestRoute, departureMins);
+
+  // Badge styling by trend
+  const trendConfig = {
+    improving: { label: '↑ Improving', color: COLORS.primary, bg: '#E8F5E9' },
+    worsening: { label: '↓ Worsening', color: COLORS.danger, bg: '#FFEBEE' },
+    stable:    { label: '→ Stable',    color: '#777',          bg: '#F5F5F5' },
+  };
+  const tc = trendConfig[trend] ?? trendConfig.stable;
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Feather name="cpu" size={14} color={iconColor} />
+        <Feather name="cpu" size={14} color={COLORS.primary} />
         <Text style={styles.headerText}>AI Traffic Forecast</Text>
-        <View style={[styles.badge, { backgroundColor: iconColor + '22' }]}>
-          <Text style={[styles.badgeText, { color: iconColor }]}>
+        <View style={[styles.trendBadge, { backgroundColor: tc.bg }]}>
+          <Text style={[styles.trendText, { color: tc.color }]}>{tc.label}</Text>
+        </View>
+        <View style={[styles.timeBadge, { backgroundColor: '#EEF2FF' }]}>
+          <Text style={styles.timeBadgeText}>
             {departureMins === 0 ? 'Live' : `+${departureMins}m`}
           </Text>
         </View>
       </View>
-      <Text style={styles.summaryText}>{summary}</Text>
+      <Text style={styles.narrativeText}>{narrative}</Text>
     </View>
   );
 }
@@ -121,6 +65,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
     gap: 6,
+    flexWrap: 'wrap',
   },
   headerText: {
     fontSize: 13,
@@ -128,16 +73,26 @@ const styles = StyleSheet.create({
     color: '#444',
     flex: 1,
   },
-  badge: {
-    paddingHorizontal: 10,
+  trendBadge: {
+    paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: 10,
   },
-  badgeText: {
+  trendText: {
     fontSize: 11,
     fontWeight: '700',
   },
-  summaryText: {
+  timeBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  timeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#007AFF',
+  },
+  narrativeText: {
     fontSize: 13.5,
     color: '#333',
     lineHeight: 21,

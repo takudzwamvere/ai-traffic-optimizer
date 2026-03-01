@@ -115,9 +115,9 @@ export const getProfile = async (userId) => {
     .from('profiles')
     .select('*')
     .eq('id', userId)
-    .single();
+    .maybeSingle(); // maybeSingle() returns null instead of throwing when no row found
   if (error) {
-    console.warn('Failed to fetch profile:', error.message);
+    console.warn('getProfile error:', error.message, error.code);
     return null;
   }
   return data;

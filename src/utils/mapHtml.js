@@ -118,6 +118,10 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       };
       
       L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+      // Push the layer toggle below the floating React Native search bar
+      var styleTag = document.createElement('style');
+      styleTag.innerHTML = '.leaflet-top.leaflet-right { margin-top: 220px; }';
+      document.head.appendChild(styleTag);
 
       // Add Labels overlay for Satellite only if needed (Usually included in Hybrid, but kept for Esri)
       // We rely on Google Hybrid for labels on satellite mostly now.
