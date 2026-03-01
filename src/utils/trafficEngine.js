@@ -162,22 +162,33 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
   const timeFactor = getTimeTrafficFactor(predictionTime);
   const transitionMult = getTransitionMultiplier(predictionTime);
 
-  // Specific Road Sensitivity — amplified by transition phase
+  // Distance-based penalty softener:
+  // Short urban trips (< 5km) don't accumulate bottlenecks like longer routes.
+  // Reduce congestion sensitivity by 50% for sub-5km segments.
+  const distanceKm = distance / 1000;
+  const shortRouteFactor = distanceKm < 5 ? 0.5 : 1.0;
+
+  // Specific Road Sensitivity — amplified by transition phase, softened for short routes
   let congestionReduction = 1.0;
   if (roadType === ROAD_TYPES.HIGHWAY) {
-    congestionReduction = 1.0 - (timeFactor * 0.4 * transitionMult);
+    congestionReduction = 1.0 - (timeFactor * 0.35 * transitionMult * shortRouteFactor);
   } else if (roadType === ROAD_TYPES.MAIN) {
-    congestionReduction = 1.0 - (timeFactor * 0.6 * transitionMult);
+    congestionReduction = 1.0 - (timeFactor * 0.55 * transitionMult * shortRouteFactor);
   } else {
-    congestionReduction = 1.0 - (timeFactor * 0.7 * transitionMult);
+    congestionReduction = 1.0 - (timeFactor * 0.65 * transitionMult * shortRouteFactor);
   }
-  // Clamp so we never get negative reduction
-  congestionReduction = Math.max(0.05, congestionReduction);
+
+  // Hard slowdown caps:
+  // Under normal conditions (no peak), speed must not drop below 82% of free-flow.
+  // During peak hours, minimum is 50% of free-flow.
+  const isPeak = timeFactor > 0.7;
+  const minReduction = isPeak ? 0.50 : 0.82;
+  congestionReduction = Math.max(congestionReduction, minReduction);
 
   // 3. Weather
   const weatherMultiplier = getWeatherImpact(weatherData, roadType);
 
-  // 4. Final Speed
+  // 4. Final Speed (congestion + weather stacked)
   let predictedSpeed = baseSpeedKmh * congestionReduction * weatherMultiplier;
 
   // Real-time Congestion Simulation — deterministic seeded randomness
@@ -187,42 +198,44 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
     const seed = Math.sin((timeOffset * 1000 + distance) * 9301 + 49297) * 233280;
     const randomRoll = seed - Math.floor(seed);
     if (roadType === ROAD_TYPES.MAIN && randomRoll < 0.05) {
-      predictedSpeed *= 0.6;
+      predictedSpeed *= 0.75; // Softened: 25% drop (was 40%)
       incidentReason = 'Bottleneck Delay';
-    } else if (roadType === ROAD_TYPES.HIGHWAY && timeFactor > 0.6 && randomRoll < 0.02) {
-      predictedSpeed *= 0.3;
+    } else if (roadType === ROAD_TYPES.HIGHWAY && timeFactor > 0.7 && randomRoll < 0.02) {
+      predictedSpeed *= 0.6;  // Softened: 40% drop (was 70%)
       incidentReason = 'Accident Reported';
     }
   }
 
-  // Min Speed Thresholds (Traffic never truly stops to 0 usually in models unless blocked)
+  // Min Speed Thresholds — realistic floors
   const minSpeeds = {
-    [ROAD_TYPES.HIGHWAY]: 20,
-    [ROAD_TYPES.MAIN]: 10,
-    [ROAD_TYPES.LOCAL]: 5,
-    [ROAD_TYPES.NARROW]: 5
+    [ROAD_TYPES.HIGHWAY]: 30,  // Highway never crawls below 30 km/h
+    [ROAD_TYPES.MAIN]: 15,     // Main roads: 15 km/h floor
+    [ROAD_TYPES.LOCAL]: 8,
+    [ROAD_TYPES.NARROW]: 6,
   };
   predictedSpeed = Math.max(predictedSpeed, minSpeeds[roadType]);
 
-  // 5. Calculate Delay & Proportional Scaling
-  // NUST to City Hall is ~6.6km (6600m). We want this to map to 7 minutes (420 seconds) baseline.
-  // 420s / 6600m = 0.06363 seconds per meter.
-  // Base duration calibrated to the user's explicit request:
-  const calibratedBaseDuration = distance * (420 / 6600);
-  
-  // Apply our speed modifiers proportionally
-  // If predictedSpeed is half of baseSpeed, duration doubles.
+  // 5. Calculate Delay
+  // Baseline: NUST to City Hall = 6 min clear, 7 min moderate/peak.
+  // 360 seconds (6 min) per 6600 meters = 0.05454 sec/meter
+  const calibratedBaseDuration = distance * (360 / 6600);
   const speedRatio = baseSpeedKmh / predictedSpeed;
   const newDuration = calibratedBaseDuration * speedRatio;
-  
   const delay = Math.max(0, newDuration - calibratedBaseDuration);
 
-  // 6. Coloring (Ratio of Predicted vs Base)
+  // 6. Congestion Coloring — stricter thresholds to avoid false congestion.
+  // A road is RED only if BOTH: speed ratio is low AND (peak + weather OR incident).
+  // Time factor alone is NOT sufficient to turn a road red.
   const ratio = predictedSpeed / baseSpeedKmh;
-  
-  let color = COLORS.primary; // Green
-  if (ratio < 0.5) color = COLORS.danger; // Red
-  else if (ratio < 0.8) color = COLORS.warning; // Yellow
+  const hasWeatherPenalty = weatherMultiplier < 0.90;
+  const hasIncident = incidentReason !== null;
+
+  let color = COLORS.primary; // Green — default for normal flowing traffic
+  if (ratio < 0.5 && (isPeak || hasIncident)) {
+    color = COLORS.danger;  // Red: only under combined peak + incident/weather pressure
+  } else if (ratio < 0.78 && (isPeak || hasWeatherPenalty || hasIncident)) {
+    color = COLORS.warning; // Yellow: moderate congestion requiring at least one real factor
+  }
 
   return {
     predictedSpeed,

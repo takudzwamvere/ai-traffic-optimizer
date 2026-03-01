@@ -17,6 +17,7 @@ export default function RouteBottomSheet({
   onDepartureChange,
   weather,
   children,
+  singleRouteMessage,
 }) {
 
   if (!isSheetVisible || !selectedRoute) return null;
@@ -93,6 +94,14 @@ export default function RouteBottomSheet({
       {isSheetExpanded && (
         <ScrollView style={styles.expandedContent} contentContainerStyle={{ paddingBottom: 40 }}>
           <View style={styles.separator} />
+
+          {/* SINGLE ROUTE NOTICE — shown when OSRM found no genuine alternatives */}
+          {singleRouteMessage && (
+            <View style={styles.singleRouteBanner}>
+              <Feather name="info" size={14} color="#555" style={{ marginRight: 8 }} />
+              <Text style={styles.singleRouteBannerText}>{singleRouteMessage}</Text>
+            </View>
+          )}
 
           {/* DEPARTURE PLANNER */}
           <DeparturePlanner
@@ -185,4 +194,22 @@ const styles = StyleSheet.create({
   altLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   corridorName: { fontSize: 11, color: '#007AFF', fontWeight: '600', marginLeft: 8 },
   altCorridorName: { fontSize: 10, color: '#007AFF', fontWeight: '500', marginTop: 2 },
+
+  singleRouteBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  singleRouteBannerText: {
+    flex: 1,
+    fontSize: 12.5,
+    color: '#555',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
 });

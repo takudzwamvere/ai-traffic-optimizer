@@ -43,6 +43,28 @@ const CURRENT_HEAVY = [
   'High congestion across the network is causing substantial delays at this time.',
 ];
 
+// Future-tense equivalents — used when departureMins > 0
+const FUTURE_CLEAR = [
+  'Traffic is expected to be flowing freely at your departure time.',
+  'Roads will likely remain clear and unobstructed when you leave.',
+  'Conditions are forecast to be light and smooth at your planned departure.',
+  'Traffic levels are predicted to be low, allowing easy travel at your departure.',
+];
+
+const FUTURE_MODERATE = [
+  'Moderate congestion is expected on some roads at your departure time.',
+  'Traffic will be somewhat busy when you plan to leave — minor delays are likely.',
+  'Roads are forecast to have moderate flow, with some slowdowns at departure.',
+  'You can expect some road activity causing mild delays at your planned departure time.',
+];
+
+const FUTURE_HEAVY = [
+  'Heavy congestion is expected to affect most routes at your departure time.',
+  'Traffic will be very busy when you plan to leave — significant delays are expected.',
+  'Road conditions are forecast to be difficult, with heavy congestion at departure.',
+  'Substantial delays are predicted across the network at your planned departure time.',
+];
+
 const FUTURE_RUSH_APPROACH = [
   'Congestion is expected to build sharply as rush hour begins.',
   'Traffic will likely worsen as the evening commute gets underway.',
@@ -135,11 +157,18 @@ function colorRank(color) {
   return 0;
 }
 
-/** Describe the current congestion level from a route color. */
+/** Describe the current condition level from a route color (present tense). */
 function currentConditionPhrase(color, seed) {
   if (color === COLORS.primary) return pick(CURRENT_CLEAR, seed);
   if (color === COLORS.warning) return pick(CURRENT_MODERATE, seed);
   return pick(CURRENT_HEAVY, seed);
+}
+
+/** Describe the departure-time condition level from a route color (future tense). */
+function futureConditionPhrase(color, seed) {
+  if (color === COLORS.primary) return pick(FUTURE_CLEAR, seed);
+  if (color === COLORS.warning) return pick(FUTURE_MODERATE, seed);
+  return pick(FUTURE_HEAVY, seed);
 }
 
 /** Describe weather impact given a weather object. */
@@ -210,8 +239,17 @@ export function generateTrafficNarrative(bestRoute, departureMins, weather) {
 
   const sentences = [];
 
-  // 1. CURRENT CONDITIONS
-  sentences.push(currentConditionPhrase(nowColor, seed));
+  // 1. OPENING — present tense for "now", future tense for departure offsets
+  if (departureMins === 0) {
+    sentences.push(currentConditionPhrase(nowColor, seed));
+  } else {
+    // Opening describes what conditions WILL BE at departure time
+    sentences.push(futureConditionPhrase(futureColor, seed));
+    // Also add a brief note on what's happening now if it differs significantly
+    if (colorRank(nowColor) !== colorRank(futureColor)) {
+      sentences.push(currentConditionPhrase(nowColor, seed + 10) + ' (Current conditions.)');
+    }
+  }
 
   // 2. FUTURE CHANGE (only if departure is in the future)
   if (departureMins > 0) {

@@ -71,14 +71,18 @@ const getRouteBearing = (route) => {
 // --- Check if route is truly different from existing routes ---
 const isRouteDifferent = (newRoute, existingRoutes) => {
   for (const existing of existingRoutes) {
-    // Stricter geometry similarity check threshold
+    // Tightened threshold: 75% geometry similarity = same route
     const similarity = geometrySimilarity(existing, newRoute);
-    if (similarity > 0.65) return false;
+    if (similarity > 0.75) return false;
 
-    // Bearing diversity check — routes within 15° heading are likely the same corridor
+    // Bearing diversity check
     const bearingDiff = Math.abs(getRouteBearing(existing) - getRouteBearing(newRoute));
     const normalizedBearing = Math.min(bearingDiff, 360 - bearingDiff);
-    if (normalizedBearing < 15 && similarity > 0.40) return false;
+    if (normalizedBearing < 15 && similarity > 0.50) return false;
+
+    // Duration similarity check: if routes are within 5% duration they're effectively the same
+    const durationRatio = Math.abs(existing.duration - newRoute.duration) / Math.max(existing.duration, 1);
+    if (durationRatio < 0.05 && similarity > 0.50) return false;
   }
   return true;
 };
@@ -106,63 +110,24 @@ const fetchViaWaypoint = async (origin, waypoint, destination) => {
 };
 
 // --- Alternative Route Discovery via Diverse Offset Waypoints ---
+// --- Main Route Fetcher: returns 1–3 genuinely different routes from OSRM ---
+// NEVER fabricates or clones routes. If OSRM returns only 1 valid route,
+// 1 route is returned and the UI handles it honestly.
 export const fetchAlternativeRoutes = async (origin, destination) => {
-  // 1. Get base routes from OSRM (may return 1-3)
   let allRoutes = await fetchOSRM(origin, destination);
 
-  // 2. Filter out duplicates from OSRM's own alternatives
+  // Deduplicate what OSRM itself returned (it sometimes returns near-identical alternatives)
   const uniqueRoutes = [allRoutes[0]];
   for (let i = 1; i < allRoutes.length; i++) {
     if (isRouteDifferent(allRoutes[i], uniqueRoutes)) {
       uniqueRoutes.push(allRoutes[i]);
     }
-  }
-  allRoutes = uniqueRoutes;
-
-  // 3. If we already have 3+ unique routes, return
-  if (allRoutes.length >= 3) {
-    return allRoutes.sort((a, b) => a.duration - b.duration).slice(0, 3);
+    if (uniqueRoutes.length >= 3) break;
   }
 
-  // 4. Generate diverse offset waypoints in multiple directions
-  // Use 8 directional offsets (N, S, E, W, NE, NW, SE, SW) with larger varying magnitudes to force detours
-  const midLat = (origin.lat + destination.lat) / 2;
-  const midLon = (origin.lon + destination.lon) / 2;
-  const dLat = Math.abs(origin.lat - destination.lat);
-  const dLon = Math.abs(origin.lon - destination.lon);
-  
-  // Calculate a dynamic spread based on distance between points, ensuring minimum viable detour size
-  const spread = Math.max(dLat, dLon, 0.015); // Increased minimum spread for distinct routes
-
-  const offsets = [
-    // Larger Perpendicular offsets
-    { lat: midLat + spread * 0.7, lon: midLon - spread * 0.7 },   // NW
-    { lat: midLat - spread * 0.7, lon: midLon + spread * 0.7 },   // SE
-    { lat: midLat + spread * 0.6, lon: midLon + spread * 0.6 },   // NE
-    { lat: midLat - spread * 0.6, lon: midLon - spread * 0.6 },   // SW
-    // Orthogonal offsets
-    { lat: midLat + spread * 1.0, lon: midLon },                   // N
-    { lat: midLat - spread * 1.0, lon: midLon },                   // S
-    { lat: midLat, lon: midLon + spread * 1.0 },                   // E
-    { lat: midLat, lon: midLon - spread * 1.0 },                   // W
-  ];
-
-  // Try offsets in parallel batches
-  for (let batch = 0; batch < 3 && allRoutes.length < 3; batch++) {
-    const batchOffsets = offsets.slice(batch * 3, (batch + 1) * 3);
-    const promises = batchOffsets.map(wp => fetchViaWaypoint(origin, wp, destination));
-    const results = await Promise.all(promises);
-
-    for (const route of results) {
-      if (!route) continue;
-      if (isRouteDifferent(route, allRoutes)) {
-        allRoutes.push(route);
-        if (allRoutes.length >= 3) break;
-      }
-    }
-  }
-
-  return allRoutes.sort((a, b) => a.duration - b.duration).slice(0, 3);
+  // Return whatever genuine routes exist (1, 2, or 3) — sorted by OSRM duration.
+  // Never pad with synthetic routes.
+  return uniqueRoutes.sort((a, b) => a.duration - b.duration);
 };
 
 // --- Main Route Function ---
@@ -174,10 +139,10 @@ export const getRoute = async (start, end, originName, destName) => {
     ]);
 
     if (rawRoutes.length > 0) {
-      const { routes: processedRoutes, roadConditions } = processAndRankRoutes(rawRoutes, weatherData, originName, destName);
-      return { routes: processedRoutes, weather: weatherData, roadConditions };
+      const { routes: processedRoutes, roadConditions, singleRouteMessage } = processAndRankRoutes(rawRoutes, weatherData, originName, destName);
+      return { routes: processedRoutes, weather: weatherData, roadConditions, singleRouteMessage };
     }
-    return { routes: [], weather: null, roadConditions: [] };
+    return { routes: [], weather: null, roadConditions: [], singleRouteMessage: null };
   } catch (error) {
     console.error("Route Fetch Error:", error);
     return { routes: [], weather: null, roadConditions: [] };

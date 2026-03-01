@@ -10,23 +10,28 @@ export const KNOWN_CORRIDORS = [
   {
     origin: 'NUST University',
     destination: 'Bulawayo City Hall',
+    // Correct real-world NUST coordinates
+    originCoords: { lat: -20.16504573651969, lon: 28.641947045699503 },
     routes: [
       {
         name: 'via Cecil Ave',
         viaRoads: ['cecil', 'fife'],
-        typicalMinutes: 7,
+        typicalMinutes: 6,       // Clear conditions
+        peakMinutes: 7,          // Moderate/peak
         description: 'Cecil Avenue direct route through suburbs',
       },
       {
         name: 'via Gwanda Rd',
         viaRoads: ['gwanda', 'fort'],
-        typicalMinutes: 8,
+        typicalMinutes: 7,
+        peakMinutes: 8,
         description: 'Gwanda Road connecting to CBD from south',
       },
       {
         name: 'via Central Avenues',
         viaRoads: ['3rd ave', '2nd ave', 'lobengula'],
-        typicalMinutes: 9,
+        typicalMinutes: 8,
+        peakMinutes: 9,
         description: 'Through central Bulawayo avenues grid',
       },
     ],
@@ -34,7 +39,7 @@ export const KNOWN_CORRIDORS = [
       morning: { start: 7, end: 9 },
       afternoon: { start: 16, end: 18.5 },
     },
-    peakDelayFactor: 1.4, // 40% longer during peak
+    peakDelayFactor: 1.167, // 7/6 = exactly 1 extra minute at peak
   },
 ];
 

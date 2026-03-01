@@ -1,4 +1,5 @@
-import profileData from './src/data/locations.json'; // using this to offset line diff safely
+import locationData from './src/data/locations.json';
+import { fuzzySearchPOI } from './src/data/bulawayoPOI';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View, Text, Alert, Keyboard, Platform, LayoutAnimation, UIManager, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +9,6 @@ import NetInfo from '@react-native-community/netinfo';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { COLORS } from './src/constants/colors';
 
-import locationData from './src/data/locations.json';
 import MapLayer from './src/components/MapLayer';
 import RoutePlanner from './src/components/RoutePlanner';
 import RouteBottomSheet from './src/components/RouteBottomSheet';
@@ -66,6 +66,7 @@ function MainApp() {
   const [hasSearched, setHasSearched] = useState(false);
   const [isProfileVisible, setIsProfileVisible] = useState(false);
   const [mapTilesLoaded, setMapTilesLoaded] = useState(false);
+  const [singleRouteMessage, setSingleRouteMessage] = useState(null);
 
   // --- Departure Planning State ---
   const [departureMins, setDepartureMins] = useState(0);
@@ -164,25 +165,21 @@ function MainApp() {
   }, []);
 
   // ==========================================
-  // Autocomplete Filtering
+  // Autocomplete — fuzzy typo-tolerant suggestions
   // ==========================================
   useEffect(() => {
-    if (originQuery.length > 2) {
-      const filtered = LOCATIONS.filter(loc =>
-        loc.name.toLowerCase().includes(originQuery.toLowerCase())
-      ).slice(0, 5);
-      setOriginSuggestions(filtered);
+    if (originQuery.length > 1) {
+      const poi = fuzzySearchPOI(originQuery, 6);
+      setOriginSuggestions(poi.map(p => ({ name: p.display, lat: p.coords.lat, lon: p.coords.lon, category: p.category })));
     } else {
       setOriginSuggestions([]);
     }
   }, [originQuery]);
 
   useEffect(() => {
-    if (destinationQuery.length > 2) {
-      const filtered = LOCATIONS.filter(loc =>
-        loc.name.toLowerCase().includes(destinationQuery.toLowerCase())
-      ).slice(0, 5);
-      setDestinationSuggestions(filtered);
+    if (destinationQuery.length > 1) {
+      const poi = fuzzySearchPOI(destinationQuery, 6);
+      setDestinationSuggestions(poi.map(p => ({ name: p.display, lat: p.coords.lat, lon: p.coords.lon, category: p.category })));
     } else {
       setDestinationSuggestions([]);
     }
@@ -288,9 +285,10 @@ function MainApp() {
       const originName = originQuery || 'My Location';
       const destName = destinationQuery;
 
-      const { routes: processedRoutes, weather: weatherData, roadConditions: conditions } = await getRoute(
+      const { routes: processedRoutes, weather: weatherData, roadConditions: conditions, singleRouteMessage: srm } = await getRoute(
         resolvedOrigin, resolvedDest, originName, destName
       );
+      setSingleRouteMessage(srm || null);
 
       if (processedRoutes.length === 0) {
         Alert.alert("No Routes", "Could not find any routes between these locations. Try different locations.");
@@ -479,6 +477,7 @@ function MainApp() {
         departureMins={departureMins}
         onDepartureChange={handleDepartureChange}
         weather={weather}
+        singleRouteMessage={singleRouteMessage}
       >
         <RoadConditionsPanel
           roadConditions={roadConditions}

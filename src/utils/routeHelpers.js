@@ -75,8 +75,8 @@ export const processRouteSegments = (route, weatherData, timeOffset = 0) => {
 export const calculateRouteScore = (route, weatherData) => {
   const result = processRouteSegments(route, weatherData, 0);
   
-  // NUST to City Hall baseline (420 seconds per 6600 meters)
-  const baseCalibratedSeconds = route.distance * (420 / 6600);
+  // Baseline: 6 min clear per 6.6km (360s / 6600m)
+  const baseCalibratedSeconds = route.distance * (360 / 6600);
   const predictedDuration = baseCalibratedSeconds + result.totalDelay;
   
   const totalDelayMinutes = result.totalDelay / 60;
@@ -173,7 +173,9 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
   // 4. Process each route with predictions + road conditions
   let allRoadConditions = [];
   const hasRain = weatherData && (weatherData.rain > 0.5 || weatherData.code >= 51);
+  // Only process as many GENUINE routes as we actually have (1, 2, or 3)
   const routeCount = Math.min(scored.length, 3);
+  const isSingleRoute = routeCount === 1;
 
   const processedRoutes = scored.slice(0, routeCount).map(({ route, score, confidenceLevel, corridorRouteName }, index) => {
     const predictions = {};
@@ -182,8 +184,8 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
     [0, 15, 30].forEach(offset => {
       const result = processRouteSegments(route, weatherData, offset);
 
-      // Calibrated baseline: NUST to City Hall = 7 min per 6.6km
-      const calibratedBaseSeconds = route.distance * (420 / 6600);
+      // Calibrated baseline: NUST to City Hall = 6 min clear, 7 min peak (360s / 6600m)
+      const calibratedBaseSeconds = route.distance * (360 / 6600);
 
       // *** THE REAL FIX: apply the computed delay to each time slot ***
       // Each offset now produces a genuinely different ETA based on:
@@ -215,14 +217,20 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
       }
     });
 
-    // Assign labels by rank (already sorted by score)
+    // Honest label assignment: never fake a 3rd route
     const current = predictions[0];
-    const minutes = current.duration;
-
     let label, uiColor;
-    if (index === 0) { label = "BEST"; uiColor = COLORS.primary; }
-    else if (index === 1) { label = "ALT"; uiColor = COLORS.warning; }
-    else { label = "SLOW"; uiColor = COLORS.danger; }
+    if (isSingleRoute) {
+      // Only one real route from OSRM — don't assign SLOW/ALT
+      label = 'ONLY ROUTE';
+      uiColor = COLORS.primary;
+    } else if (index === 0) {
+      label = 'BEST'; uiColor = COLORS.primary;
+    } else if (index === 1) {
+      label = 'ALT'; uiColor = COLORS.warning;
+    } else {
+      label = 'SLOW'; uiColor = COLORS.danger;
+    }
 
     // Reason generation
     let reason = "Clear Road";
@@ -260,8 +268,11 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
   return {
     routes: processedRoutes,
     roadConditions: deduplicateRoadConditions(allRoadConditions),
+    // Honest availability flag for the UI
+    singleRouteMessage: isSingleRoute
+      ? 'Only one viable route found to this destination. No practical alternatives are available.'
+      : null,
   };
 };
 
-// Keep backward compat export name
 export const ensureThreeRoutes = processAndRankRoutes;
