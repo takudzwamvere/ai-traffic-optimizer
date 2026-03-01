@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, Image } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
-import { getProfile, getSearchHistory } from '../services/dataService';
+import { getProfile, getSearchHistory, getUserStats } from '../services/dataService';
 import EditProfileScreen from './EditProfileScreen';
 
 export default function ProfileScreen({ visible, onClose }) {
   const { user, signOut } = useAuth();
   const [profile, setProfile] = useState(null);
   const [history, setHistory] = useState([]);
+  const [stats, setStats] = useState({ totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 });
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -17,14 +18,16 @@ export default function ProfileScreen({ visible, onClose }) {
     if (!user?.id) return;
     setLoading(true);
     try {
-      const [profData, histData] = await Promise.all([
+      const [profData, histData, statsData] = await Promise.all([
         getProfile(user.id),
-        getSearchHistory(user.id, 50) // Fetch up to 50 for stats
+        getSearchHistory(user.id, 10),
+        getUserStats(user.id),
       ]);
       setProfile(profData);
       setHistory(histData || []);
+      setStats(statsData);
     } catch (err) {
-      console.warn("Error loading profile data", err);
+      console.warn('Error loading profile data', err);
     }
     setLoading(false);
   };
@@ -51,11 +54,8 @@ export default function ProfileScreen({ visible, onClose }) {
     ]);
   };
 
-  // Derive Stats
-  const totalSearches = history.length;
-  // Unique Destinations count
-  const distinctDestinations = new Set(history.map(h => h.destination_name)).size;
-  const timeSaved = history.reduce((acc, curr) => acc + (curr.best_duration_min > 0 ? 5 : 0), 0); // Simulated time saved
+  // Stats come directly from the Supabase getUserStats() call
+  const { totalSearches, distinctDestinations, timeSavedMins } = stats;
 
   const initials = profile?.display_name 
     ? profile.display_name.substring(0, 2).toUpperCase() 
@@ -85,19 +85,23 @@ export default function ProfileScreen({ visible, onClose }) {
             
             {/* PROFILE INFO */}
             <View style={styles.profileCard}>
-              <View style={styles.avatar}>
-                {profile?.avatar_url ? (
-                   // In a full implementation, you'd use a real Image component here
-                   <Text style={styles.avatarText}>{initials}</Text>
-                ) : (
-                   <Text style={styles.avatarText}>{initials}</Text>
-                )}
-              </View>
+              {/* Avatar: show real image or initials fallback */}
+              {profile?.avatar_url ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initials}</Text>
+                </View>
+              )}
               <Text style={styles.name}>{profile?.display_name || 'Traffic Explorer'}</Text>
               <Text style={styles.email}>{user.email}</Text>
-              {profile?.updated_at && (
-                <Text style={styles.joined}>Member since {new Date(user.created_at).toLocaleDateString()}</Text>
-              )}
+              {profile?.bio ? (
+                <Text style={styles.bio} numberOfLines={2}>{profile.bio}</Text>
+              ) : null}
+              <Text style={styles.joined}>Member since {new Date(user.created_at).toLocaleDateString()}</Text>
             </View>
 
             {/* ACTIVITY STATS */}
@@ -106,7 +110,7 @@ export default function ProfileScreen({ visible, onClose }) {
               <View style={styles.statBox}>
                 <Feather name="navigation" size={20} color={COLORS.primary} />
                 <Text style={styles.statValue}>{totalSearches}</Text>
-                <Text style={styles.statLabel}>Total Searches</Text>
+                <Text style={styles.statLabel}>Searches</Text>
               </View>
               <View style={styles.statBox}>
                 <Feather name="map-pin" size={20} color={COLORS.warning} />
@@ -114,8 +118,8 @@ export default function ProfileScreen({ visible, onClose }) {
                 <Text style={styles.statLabel}>Destinations</Text>
               </View>
               <View style={styles.statBox}>
-                <Feather name="clock" size={20} color={COLORS.success} />
-                <Text style={styles.statValue}>{timeSaved}m</Text>
+                <Feather name="clock" size={20} color={COLORS.primary} />
+                <Text style={styles.statValue}>{timeSavedMins}m</Text>
                 <Text style={styles.statLabel}>Time Saved</Text>
               </View>
             </View>
@@ -233,6 +237,19 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   avatarText: {
     fontSize: 28,
     fontWeight: '800',
@@ -254,6 +271,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     fontWeight: '500',
+    marginTop: 4,
+  },
+  bio: {
+    fontSize: 13,
+    color: '#6B7B9A',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+    lineHeight: 19,
   },
   sectionTitle: {
     fontSize: 18,

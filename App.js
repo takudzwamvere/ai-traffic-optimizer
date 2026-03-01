@@ -17,8 +17,9 @@ import NetworkStatus from './src/components/NetworkStatus';
 import WeatherWidget from './src/components/WeatherWidget';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import LoadingOverlay from './src/components/LoadingOverlay';
+import MapLoadingOverlay from './src/components/MapLoadingOverlay';
 import AuthScreen from './src/components/AuthScreen';
-import ProfileScreen from './src/components/ProfileScreen'; // New
+import ProfileScreen from './src/components/ProfileScreen';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { geocodeLocation, getRoute } from './src/services/trafficApi';
@@ -64,6 +65,10 @@ function MainApp() {
   const [isConnected, setIsConnected] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [isProfileVisible, setIsProfileVisible] = useState(false);
+  const [mapTilesLoaded, setMapTilesLoaded] = useState(false);
+
+  // --- Departure Planning State ---
+  const [departureMins, setDepartureMins] = useState(0);
 
   // --- Recent Searches (Supabase-backed) ---
   const [recentSearches, setRecentSearches] = useState([]);
@@ -319,12 +324,14 @@ function MainApp() {
   // ==========================================
   // Draw Route on Map (with segments)
   // ==========================================
-  const drawRouteOnMap = (route, dest) => {
+  const drawRouteOnMap = (route, dest, offsetMins = 0) => {
     if (!route || !webViewRef.current) return;
 
-    // Build segmented GeoJSON
-    const currentPrediction = route.predictions?.[0];
-    const segments = currentPrediction?.segments;
+    // Build segmented GeoJSON — use the departure offset bucket
+    let segments;
+    if (offsetMins <= 7)  segments = route.predictions?.[0]?.segments;
+    else if (offsetMins <= 22) segments = route.predictions?.[15]?.segments;
+    else segments = route.predictions?.[30]?.segments;
 
     const geoJson = {
       type: 'Feature',
@@ -350,7 +357,20 @@ function MainApp() {
         lat: coords[coords.length - 1][1],
         lon: coords[coords.length - 1][0],
       };
-      drawRouteOnMap(route, dest);
+      drawRouteOnMap(route, dest, departureMins);
+    }
+  };
+
+  // ==========================================
+  // Departure Time Change Handler
+  // ==========================================
+  const handleDepartureChange = (mins) => {
+    setDepartureMins(mins);
+    // Redraw the map with future traffic colors
+    if (selectedRoute) {
+      const coords = selectedRoute.geometry?.coordinates;
+      const dest = coords ? { lat: coords[coords.length - 1][1], lon: coords[coords.length - 1][0] } : null;
+      drawRouteOnMap(selectedRoute, dest, mins);
     }
   };
 
@@ -389,10 +409,14 @@ function MainApp() {
       <MapLayer
         ref={webViewRef}
         origin={gpsCoords}
+        onTilesLoaded={() => setMapTilesLoaded(true)}
         onLoadEnd={() => {
           webViewRef.current?.injectJavaScript(`setUserLocation(${gpsCoords.lat}, ${gpsCoords.lon}); true;`);
         }}
       />
+
+      {/* MAP LOADING OVERLAY — real tile-load detection via Leaflet event */}
+      <MapLoadingOverlay visible={!mapTilesLoaded} />
 
       {/* WEATHER WIDGET — positioned below RoutePlanner */}
       <WeatherWidget weather={weather} topOffset={185} />
@@ -437,6 +461,9 @@ function MainApp() {
         toggleSheet={toggleSheet}
         routes={routes}
         handleRouteSelect={handleRouteSelect}
+        departureMins={departureMins}
+        onDepartureChange={handleDepartureChange}
+        weather={weather}
       >
         <RoadConditionsPanel
           roadConditions={roadConditions}

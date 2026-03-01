@@ -1,40 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  ActivityIndicator, Alert, Modal, KeyboardAvoidingView,
+  Platform, ScrollView, Image
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
-import { updateProfile } from '../services/dataService';
+import { updateProfile, uploadAvatar } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
 
 export default function EditProfileScreen({ visible, onClose, profile }) {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
+  const [localAvatarUri, setLocalAvatarUri] = useState(null); // local file picked
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState(null); // saved URL
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (visible && profile) {
       setDisplayName(profile.display_name || '');
       setBio(profile.bio || '');
+      setCurrentAvatarUrl(profile.avatar_url || null);
+      setLocalAvatarUri(null);
     }
   }, [visible, profile]);
+
+  const handlePickImage = async () => {
+    // Request permission
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library to change your avatar.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],   // Force square crop
+      quality: 0.7,     // Compress to 70% to keep upload small
+    });
+
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setLocalAvatarUri(result.assets[0].uri);
+    }
+  };
 
   const handleSave = async () => {
     if (!user?.id) return;
     setLoading(true);
     
     try {
+      let avatarUrl = currentAvatarUrl;
+
+      // If user picked a new image, upload it first
+      if (localAvatarUri) {
+        avatarUrl = await uploadAvatar(user.id, localAvatarUri);
+      }
+
       await updateProfile(user.id, {
         display_name: displayName.trim(),
         bio: bio.trim(),
-        updated_at: new Date().toISOString()
+        avatar_url: avatarUrl,
+        updated_at: new Date().toISOString(),
       });
+
       onClose();
     } catch (err) {
-      Alert.alert("Error", "Could not update profile.");
+      console.warn('Profile save error:', err);
+      Alert.alert('Error', 'Could not save profile. Please check your connection and try again.');
     }
     
     setLoading(false);
   };
+
+  // The avatar to display: prioritise newly picked local image, then saved URL, then initials
+  const displayInitials = profile?.display_name
+    ? profile.display_name.substring(0, 2).toUpperCase()
+    : user?.email?.substring(0, 2).toUpperCase() || '??';
+
+  const avatarSource = localAvatarUri
+    ? { uri: localAvatarUri }
+    : currentAvatarUrl
+    ? { uri: currentAvatarUrl }
+    : null;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="formSheet">
@@ -49,22 +99,37 @@ export default function EditProfileScreen({ visible, onClose, profile }) {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
           <TouchableOpacity onPress={handleSave} style={styles.saveBtn} disabled={loading}>
-            {loading ? <ActivityIndicator size="small" color={COLORS.primary} /> : <Text style={styles.saveText}>Save</Text>}
+            {loading
+              ? <ActivityIndicator size="small" color={COLORS.primary} />
+              : <Text style={styles.saveText}>Save</Text>
+            }
           </TouchableOpacity>
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           
+          {/* AVATAR SECTION */}
           <View style={styles.avatarSection}>
-            <View style={styles.avatarPlaceholder}>
-              <Feather name="camera" size={28} color="#999" />
-            </View>
-            <TouchableOpacity style={styles.changePhotoBtn}>
+            <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
+              {avatarSource ? (
+                <Image source={avatarSource} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarInitials}>{displayInitials}</Text>
+                </View>
+              )}
+              {/* Camera badge overlay */}
+              <View style={styles.cameraBadge}>
+                <Feather name="camera" size={14} color="#fff" />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.changePhotoBtn} onPress={handlePickImage}>
               <Text style={styles.changePhotoText}>Change Profile Photo</Text>
             </TouchableOpacity>
-            <Text style={styles.photoHint}>*Supabase Storage upload pending setup</Text>
+            <Text style={styles.photoHint}>Square images work best</Text>
           </View>
 
+          {/* DISPLAY NAME */}
           <View style={styles.formGroup}>
             <Text style={styles.label}>Display Name</Text>
             <View style={styles.inputContainer}>
@@ -79,6 +144,7 @@ export default function EditProfileScreen({ visible, onClose, profile }) {
             </View>
           </View>
 
+          {/* BIO */}
           <View style={styles.formGroup}>
             <Text style={styles.label}>Bio (Optional)</Text>
             <View style={[styles.inputContainer, styles.bioContainer]}>
@@ -134,27 +200,52 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     marginTop: 10,
   },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
   avatarPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#E8ECF0',
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 4,
-    marginBottom: 16,
+    elevation: 5,
+  },
+  avatarInitials: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   changePhotoBtn: {
     backgroundColor: '#E6F0FF',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
+    marginTop: 14,
   },
   changePhotoText: {
     color: COLORS.primary,
@@ -164,7 +255,7 @@ const styles = StyleSheet.create({
   photoHint: {
     fontSize: 11,
     color: '#AAA',
-    marginTop: 8,
+    marginTop: 6,
   },
   
   formGroup: { marginBottom: 24 },
@@ -203,5 +294,5 @@ const styles = StyleSheet.create({
   },
   bioInput: {
     paddingTop: 14,
-  }
+  },
 });

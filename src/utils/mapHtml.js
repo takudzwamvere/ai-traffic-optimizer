@@ -174,6 +174,31 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     }
 
     initMap();
+
+    // --- MAP TILE LOADING DETECTION ---
+    // After the map is created, we listen for when all visible tiles have loaded.
+    // We use 'load' event from the active layer which fires once all tiles in view are loaded.
+    // Then we post a message to React Native so the loading overlay can be dismissed.
+    (function() {
+      let tileLoaded = false;
+      
+      // Listen for the first batch of tiles to finish loading
+      function onTilesReady() {
+        if (tileLoaded) return;
+        tileLoaded = true;
+        try {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_TILES_LOADED' }));
+          }
+        } catch(e) {}
+      }
+      
+      // Leaflet map fires 'load' when all tiles in current view have loaded
+      map.once('load', onTilesReady);
+      
+      // Fallback: if 'load' never fires (e.g. cached tiles), trigger after a short delay
+      setTimeout(onTilesReady, 4000);
+    })();
   </script>
 </body>
 </html>
