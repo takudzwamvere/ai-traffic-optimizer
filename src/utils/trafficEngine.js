@@ -216,9 +216,9 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
   predictedSpeed = Math.max(predictedSpeed, minSpeeds[roadType]);
 
   // 5. Calculate Delay
-  // Baseline: NUST to City Hall = 6 min clear, 7 min moderate/peak.
-  // 360 seconds (6 min) per 6600 meters = 0.05454 sec/meter
-  const calibratedBaseDuration = distance * (360 / 6600);
+  // Baseline: NUST to City Hall = 7 min clear.
+  // 420 seconds (7 min) per 6600 meters = 0.06363 sec/meter
+  const calibratedBaseDuration = distance * (420 / 6600);
   const speedRatio = baseSpeedKmh / predictedSpeed;
   const newDuration = calibratedBaseDuration * speedRatio;
   const delay = Math.max(0, newDuration - calibratedBaseDuration);

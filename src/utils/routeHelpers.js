@@ -75,8 +75,8 @@ export const processRouteSegments = (route, weatherData, timeOffset = 0) => {
 export const calculateRouteScore = (route, weatherData) => {
   const result = processRouteSegments(route, weatherData, 0);
   
-  // Baseline: 6 min clear per 6.6km (360s / 6600m)
-  const baseCalibratedSeconds = route.distance * (360 / 6600);
+  // Baseline: 7 min clear per 6.6km (420s / 6600m)
+  const baseCalibratedSeconds = route.distance * (420 / 6600);
   const predictedDuration = baseCalibratedSeconds + result.totalDelay;
   
   const totalDelayMinutes = result.totalDelay / 60;
@@ -184,8 +184,8 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
     [0, 15, 30].forEach(offset => {
       const result = processRouteSegments(route, weatherData, offset);
 
-      // Calibrated baseline: NUST to City Hall = 6 min clear, 7 min peak (360s / 6600m)
-      const calibratedBaseSeconds = route.distance * (360 / 6600);
+      // Calibrated baseline: NUST to City Hall = 7 min clear (420s / 6600m)
+      const calibratedBaseSeconds = route.distance * (420 / 6600);
 
       // *** THE REAL FIX: apply the computed delay to each time slot ***
       // Each offset now produces a genuinely different ETA based on:

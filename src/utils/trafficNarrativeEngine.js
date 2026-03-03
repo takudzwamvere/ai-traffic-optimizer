@@ -118,10 +118,24 @@ const WEATHER_STORM = [
   'Severe weather is affecting the road network. Plan for major disruptions.',
 ];
 
+// Post-rain / residual wet roads — used when skies are overcast after overnight rain
+const WEATHER_POST_RAIN = [
+  'Roads remain wet following last night\'s rainfall — allow slightly more braking distance on local streets.',
+  'Overnight rain has left road surfaces damp. Wet roads may cause minor slowdowns, particularly on narrower routes.',
+  'Following last night\'s rain, road surfaces are still wet in places. Drive with caution on local and narrow roads.',
+];
+
 const WEATHER_CLEAR = [
   'Weather conditions are good and not adding to travel times.',
   'Clear skies mean no weather-related penalties on any route.',
   'Dry and clear conditions are supporting normal traffic flow.',
+];
+
+// Near-term rain outlook — used when departure is 45+ minutes away
+const RAIN_OUTLOOK_SOON = [
+  'Note: there is a chance of light showers in 2–3 hours — consider leaving earlier if possible.',
+  'Weather outlook: light rain is possible within the next 2–3 hours. Plan accordingly.',
+  'Heads up: conditions may bring light showers in 2–3 hours. Departing sooner is advisable.',
 ];
 
 const ROUTE_REASON_BEST = [
@@ -181,6 +195,9 @@ function weatherPhrase(weather, departureMins, seed) {
     return departureMins > 5 ? pick(WEATHER_RAIN_FUTURE, seed) : pick(WEATHER_RAIN_NOW, seed);
   }
   if (code >= 51 || rain > 0.5) return pick(WEATHER_RAIN_NOW, seed + 1);
+  // Overcast/cloudy skies (codes 1–3) with little or no current rain suggest
+  // post-rain conditions — roads may still be wet from overnight precipitation.
+  if (code >= 1 && code <= 3) return pick(WEATHER_POST_RAIN, seed);
   return pick(WEATHER_CLEAR, seed);
 }
 
@@ -273,6 +290,11 @@ export function generateTrafficNarrative(bestRoute, departureMins, weather) {
   // 3. WEATHER CONTEXT
   const wPhrase = weatherPhrase(weather, departureMins, seed + 6);
   sentences.push(wPhrase);
+
+  // 3b. RAIN OUTLOOK — warn of possible light showers for departures 45+ min away
+  if (departureMins >= 45) {
+    sentences.push(pick(RAIN_OUTLOOK_SOON, seed + 11));
+  }
 
   // 4. ROUTE REASONING (for departure > now)
   if (departureMins > 0 && bestRoute.corridorName) {
