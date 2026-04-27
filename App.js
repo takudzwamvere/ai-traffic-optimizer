@@ -1,5 +1,4 @@
 import locationData from './src/data/locations.json';
-import { fuzzySearchPOI } from './src/data/bulawayoPOI';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View, Text, Alert, Keyboard, Platform, LayoutAnimation, UIManager, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +12,7 @@ import MapLayer from './src/components/MapLayer';
 import RoutePlanner from './src/components/RoutePlanner';
 import RouteBottomSheet from './src/components/RouteBottomSheet';
 import RoadConditionsPanel from './src/components/RoadConditionsPanel';
+import RouteSummaryCard from './src/components/RouteSummaryCard';
 import NetworkStatus from './src/components/NetworkStatus';
 import WeatherWidget from './src/components/WeatherWidget';
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -22,7 +22,8 @@ import AuthScreen from './src/components/AuthScreen';
 import ProfileScreen from './src/components/ProfileScreen';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { geocodeLocation, getRoute } from './src/services/trafficApi';
+import { processAndRankRoutes } from './src/utils/routeHelpers';
+import { getCurrentWeather } from './src/services/weatherApi';
 import { saveSearch, getSearchHistory, getProfile } from './src/services/dataService';
 
 // Enable Animations
@@ -165,34 +166,48 @@ function MainApp() {
   }, []);
 
   // ==========================================
-  // Autocomplete — fuzzy typo-tolerant suggestions
+  // Autocomplete — Google Places Webview integration
   // ==========================================
   useEffect(() => {
-    if (originQuery.length > 1) {
-      const poi = fuzzySearchPOI(originQuery, 6);
-      setOriginSuggestions(poi.map(p => ({ name: p.display, lat: p.coords.lat, lon: p.coords.lon, category: p.category })));
+    if (originQuery.length > 2 && originQuery !== "My Location") {
+      webViewRef.current?.injectJavaScript(`requestAutocompleteSuggestions('${originQuery.replace(/'/g, "\\'")}', 'from'); true;`);
     } else {
       setOriginSuggestions([]);
     }
   }, [originQuery]);
 
   useEffect(() => {
-    if (destinationQuery.length > 1) {
-      const poi = fuzzySearchPOI(destinationQuery, 6);
-      setDestinationSuggestions(poi.map(p => ({ name: p.display, lat: p.coords.lat, lon: p.coords.lon, category: p.category })));
+    if (destinationQuery.length > 2) {
+      webViewRef.current?.injectJavaScript(`requestAutocompleteSuggestions('${destinationQuery.replace(/'/g, "\\'")}', 'to'); true;`);
     } else {
       setDestinationSuggestions([]);
     }
   }, [destinationQuery]);
 
+  const handleAutocompleteResult = (data) => {
+    if (data.reqId === 'from') setOriginSuggestions(data.results);
+    if (data.reqId === 'to') setDestinationSuggestions(data.results);
+  };
+
+  const handlePlaceDetailsResult = (data) => {
+    if (data.reqId === 'from' && data.coords) {
+      setOriginMode('manual');
+      setOriginCoords(data.coords);
+    }
+    if (data.reqId === 'to' && data.coords) {
+      setDestinationCoords(data.coords);
+    }
+  };
+
   // ==========================================
   // Origin Selection
   // ==========================================
   const handleOriginSelect = (item) => {
-    setOriginMode('manual');
-    setOriginCoords({ lat: item.lat, lon: item.lon });
     setOriginQuery(item.name);
     setOriginSuggestions([]);
+    if (item.placeId) {
+      webViewRef.current?.injectJavaScript(`requestPlaceDetails('${item.placeId}', 'from'); true;`);
+    }
   };
 
   const handleUseMyLocation = () => {
@@ -206,9 +221,13 @@ function MainApp() {
   // Destination Selection
   // ==========================================
   const handleDestinationSelect = (item) => {
-    setDestinationCoords({ lat: item.lat, lon: item.lon });
     setDestinationQuery(item.name);
     setDestinationSuggestions([]);
+    if (item.placeId) {
+      webViewRef.current?.injectJavaScript(`requestPlaceDetails('${item.placeId}', 'to'); true;`);
+    } else if (item.coords) {
+      setDestinationCoords(item.coords);
+    }
   };
 
   // ==========================================
@@ -238,38 +257,20 @@ function MainApp() {
     setOriginSuggestions([]);
     setDestinationSuggestions([]);
 
-    // Resolve origin
     let resolvedOrigin = originCoords || gpsCoords;
     if (originMode === 'manual' && !originCoords && originQuery.length > 0) {
       const known = LOCATIONS.find(p => p.name.toLowerCase() === originQuery.toLowerCase());
       if (known) resolvedOrigin = { lat: known.lat, lon: known.lon };
-      else resolvedOrigin = await geocodeLocation(originQuery);
     }
 
-    // Resolve destination
     let resolvedDest = destinationCoords;
     if (!resolvedDest && destinationQuery.length > 0) {
       const known = LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
       if (known) resolvedDest = { lat: known.lat, lon: known.lon };
-      else resolvedDest = await geocodeLocation(destinationQuery);
     }
 
-    // --- Edge Cases ---
-    if (!resolvedOrigin) {
-      Alert.alert("Missing Origin", "Please enter a starting location or enable GPS.");
-      return;
-    }
-    if (!resolvedDest) {
-      Alert.alert("Missing Destination", "Please enter a destination.");
-      return;
-    }
-    if (
-      Math.abs(resolvedOrigin.lat - resolvedDest.lat) < 0.0005 &&
-      Math.abs(resolvedOrigin.lon - resolvedDest.lon) < 0.0005
-    ) {
-      Alert.alert("Same Location", "Origin and destination are the same. Please choose a different destination.");
-      return;
-    }
+    if (!resolvedOrigin) { Alert.alert("Missing Origin", "Please enter a starting location or enable GPS."); return; }
+    if (!resolvedDest) { Alert.alert("Missing Destination", "Please enter a destination."); return; }
 
     setLoading(true);
     setHasSearched(true);
@@ -281,53 +282,70 @@ function MainApp() {
     setIsSheetExpanded(false);
 
     try {
-      // Pass origin/destination names for corridor matching
-      const originName = originQuery || 'My Location';
-      const destName = destinationQuery;
-
-      const { routes: processedRoutes, weather: weatherData, roadConditions: conditions, singleRouteMessage: srm } = await getRoute(
-        resolvedOrigin, resolvedDest, originName, destName
-      );
-      setSingleRouteMessage(srm || null);
-
-      if (processedRoutes.length === 0) {
-        Alert.alert("No Routes", "Could not find any routes between these locations. Try different locations.");
-        setLoading(false);
-        return;
-      }
-
-      setRoutes(processedRoutes);
+      // Fetch Live Weather First (used by traffic engine)
+      const weatherData = await getCurrentWeather(resolvedOrigin.lat, resolvedOrigin.lon);
       setWeather(weatherData);
-      setRoadConditions(conditions || []);
 
-      const best = processedRoutes[0];
-      setSelectedRoute(best);
-      setIsSheetVisible(true);
-
-      // Draw segmented route on map
-      drawRouteOnMap(best, resolvedDest);
-
-      // Save search to Supabase and update local recent searches
-      if (destinationQuery && user?.id) {
-        saveSearch(user.id, {
-          originName: originName,
-          destinationName: destName,
-          originLat: resolvedOrigin.lat,
-          originLon: resolvedOrigin.lon,
-          destLat: resolvedDest.lat,
-          destLon: resolvedDest.lon,
-          routeCount: processedRoutes.length,
-          bestDurationMin: best.predictions?.[0]?.duration || 0,
-        }).catch(() => {}); // fire-and-forget
-
-        // Update local cache
-        setRecentSearches(prev => {
-          const filtered = prev.filter(s => s.name !== destinationQuery);
-          return [{ name: destinationQuery, coords: resolvedDest }, ...filtered].slice(0, 5);
-        });
-      }
+      // Inject JS to fetch Google Directions
+      webViewRef.current?.injectJavaScript(`requestGoogleRoute(${resolvedOrigin.lat}, ${resolvedOrigin.lon}, ${resolvedDest.lat}, ${resolvedDest.lon}); true;`);
     } catch (error) {
-      Alert.alert("Error", "Failed to fetch routes. Please try again.");
+      setLoading(false);
+      Alert.alert("Error", "Failed to initiate route fetch.");
+    }
+  };
+
+  const handleRouteResult = (data) => {
+    if (data.error || !data.routes || data.routes.length === 0) {
+      Alert.alert("No Routes", "Could not find any routes for these locations.");
+      setLoading(false);
+      return;
+    }
+
+    const originName = originQuery || 'My Location';
+    const destName = destinationQuery;
+    let resolvedDest = destinationCoords;
+    if (!resolvedDest && destinationQuery.length > 0) {
+      const known = LOCATIONS.find(p => p.name.toLowerCase() === destName.toLowerCase());
+      if (known) resolvedDest = { lat: known.lat, lon: known.lon };
+    }
+
+    const processingResult = processAndRankRoutes(data.routes, weather, originName, destName);
+    
+    setSingleRouteMessage(processingResult.singleRouteMessage || null);
+    
+    if (processingResult.routes.length === 0) {
+      Alert.alert("No Routes", "Processed routes were empty.");
+      setLoading(false);
+      return;
+    }
+
+    setRoutes(processingResult.routes);
+    setRoadConditions(processingResult.roadConditions || []);
+
+    const best = processingResult.routes[0];
+    setSelectedRoute(best);
+    setIsSheetVisible(true);
+
+    drawRouteOnMap(best, resolvedDest);
+
+    // Persist search history
+    if (destinationQuery && user?.id) {
+      let resolvedOrigin = originCoords || gpsCoords;
+      saveSearch(user.id, {
+        originName: originName,
+        destinationName: destName,
+        originLat: resolvedOrigin.lat,
+        originLon: resolvedOrigin.lon,
+        destLat: resolvedDest?.lat,
+        destLon: resolvedDest?.lon,
+        routeCount: processingResult.routes.length,
+        bestDurationMin: best.predictions?.[0]?.duration || 0,
+      }).catch(() => {});
+
+      setRecentSearches(prev => {
+        const filtered = prev.filter(s => s.name !== destinationQuery);
+        return [{ name: destinationQuery, coords: resolvedDest }, ...filtered].slice(0, 5);
+      });
     }
 
     setLoading(false);
@@ -422,6 +440,9 @@ function MainApp() {
         ref={webViewRef}
         origin={gpsCoords}
         onTilesLoaded={() => setMapTilesLoaded(true)}
+        onRouteResult={handleRouteResult}
+        onAutocompleteResult={handleAutocompleteResult}
+        onPlaceDetailsResult={handlePlaceDetailsResult}
         onLoadEnd={() => {
           webViewRef.current?.injectJavaScript(`setUserLocation(${gpsCoords.lat}, ${gpsCoords.lon}); true;`);
         }}
@@ -438,7 +459,7 @@ function MainApp() {
 
       {/* LOCATE ME FAB */}
       <TouchableOpacity
-        style={[styles.locateFab, { bottom: isSheetVisible ? (isSheetExpanded ? '70%' : 260) : 80 }]}
+        style={[styles.locateFab, { bottom: isSheetVisible ? (isSheetExpanded ? '80%' : 440) : 80 }]}
         onPress={handleLocateMe}
         activeOpacity={0.85}
       >
@@ -465,6 +486,17 @@ function MainApp() {
         onRecentSelect={handleRecentSelect}
         topInset={insets.top}
       />
+
+      {/* AI ROUTE SUMMARY CARD (Floats above bottom sheet) */}
+      {isSheetVisible && selectedRoute && (
+        <RouteSummaryCard 
+          route={selectedRoute}
+          departureMins={departureMins}
+          weather={weather}
+          roadConditions={roadConditions}
+          bottomOffset={isSheetExpanded ? '70%' : 260}
+        />
+      )}
 
       {/* BOTTOM SHEET */}
       <RouteBottomSheet
