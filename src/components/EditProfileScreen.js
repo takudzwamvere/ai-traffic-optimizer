@@ -36,7 +36,7 @@ export default function EditProfileScreen({ visible, onClose, profile }) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],   // Force square crop
       quality: 0.7,     // Compress to 70% to keep upload small

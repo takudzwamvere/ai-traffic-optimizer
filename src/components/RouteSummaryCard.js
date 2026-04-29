@@ -54,7 +54,9 @@ export default function RouteSummaryCard({ route, departureMins, weather, roadCo
   let badgeText = 'Clear';
   let badgeColor = COLORS.primary;
   
-  const routeColor = currentData.color ? currentData.color.toLowerCase() : route.uiColor.toLowerCase();
+  const routeColor = currentData.color
+    ? currentData.color.toLowerCase()
+    : (route.uiColor || '').toLowerCase();
   
   if (routeColor.includes('warning') || routeColor === '#fbbc04' || routeColor === '#fb8c00') {
     badgeText = 'Moderate';

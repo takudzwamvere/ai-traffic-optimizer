@@ -49,6 +49,16 @@ export function AuthProvider({ children }) {
     setSession(null);
   };
 
+  const handleGuestSignIn = () => {
+    const guestUser = {
+      id: 'guest-user',
+      email: 'guest@traffic-optimizer.local',
+      created_at: new Date().toISOString(),
+      isGuest: true,
+    };
+    setUser(guestUser);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -57,6 +67,7 @@ export function AuthProvider({ children }) {
       signIn: handleSignIn,
       signUp: handleSignUp,
       signOut: handleSignOut,
+      guestSignIn: handleGuestSignIn,
       isAuthenticated: !!user,
     }}>
       {children}

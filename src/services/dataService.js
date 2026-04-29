@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Upload the user's avatar image to Supabase Storage.
@@ -6,6 +7,9 @@ import { supabase } from './supabase';
  * Returns the public URL on success.
  */
 export const uploadAvatar = async (userId, localUri) => {
+  if (userId === 'guest-user') {
+    return localUri; // Mock online storage with local path
+  }
   // 1. Fetch the image as a blob from the local file URI
   const response = await fetch(localUri);
   const blob = await response.blob();
@@ -38,12 +42,24 @@ export const uploadAvatar = async (userId, localUri) => {
  * Returns: { totalSearches, distinctDestinations, timeSavedMins }
  */
 export const getUserStats = async (userId) => {
-  const { data, error } = await supabase
-    .from('search_history')
-    .select('destination_name, best_duration_min')
-    .eq('user_id', userId);
+  let data = [];
+  
+  if (userId === 'guest-user') {
+    try {
+      const json = await AsyncStorage.getItem('@guest_history');
+      data = json ? JSON.parse(json) : [];
+    } catch (e) {
+      return { totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 };
+    }
+  } else {
+    const { data: remoteData, error } = await supabase
+      .from('search_history')
+      .select('destination_name, best_duration_min')
+      .eq('user_id', userId);
 
-  if (error) return { totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 };
+    if (error) return { totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 };
+    data = remoteData || [];
+  }
 
   const totalSearches = data.length;
   const distinctDestinations = new Set(data.map(h => h.destination_name)).size;
@@ -57,6 +73,31 @@ export const getUserStats = async (userId) => {
  * Save a route search to the user's history
  */
 export const saveSearch = async (userId, searchData) => {
+  if (userId === 'guest-user') {
+    try {
+      const existingJson = await AsyncStorage.getItem('@guest_history');
+      const history = existingJson ? JSON.parse(existingJson) : [];
+      const newSearch = {
+        id: Math.random().toString(),
+        user_id: userId,
+        origin_name: searchData.originName || 'My Location',
+        destination_name: searchData.destinationName,
+        origin_lat: searchData.originLat,
+        origin_lon: searchData.originLon,
+        dest_lat: searchData.destLat,
+        dest_lon: searchData.destLon,
+        route_count: searchData.routeCount || 0,
+        best_duration_min: searchData.bestDurationMin || 0,
+        searched_at: new Date().toISOString()
+      };
+      history.unshift(newSearch);
+      await AsyncStorage.setItem('@guest_history', JSON.stringify(history));
+      return newSearch;
+    } catch (e) {
+      return null;
+    }
+  }
+
   const { data, error } = await supabase
     .from('search_history')
     .insert({
@@ -81,6 +122,16 @@ export const saveSearch = async (userId, searchData) => {
  * Get the user's search history (most recent first)
  */
 export const getSearchHistory = async (userId, limit = 10) => {
+  if (userId === 'guest-user') {
+    try {
+      const existingJson = await AsyncStorage.getItem('@guest_history');
+      const history = existingJson ? JSON.parse(existingJson) : [];
+      return history.slice(0, limit);
+    } catch (e) {
+      return [];
+    }
+  }
+
   const { data, error } = await supabase
     .from('search_history')
     .select('*')
@@ -98,6 +149,16 @@ export const getSearchHistory = async (userId, limit = 10) => {
  * Delete a search from history
  */
 export const deleteSearch = async (searchId) => {
+  // Guest handling:
+  try {
+    const existingJson = await AsyncStorage.getItem('@guest_history');
+    if (existingJson) {
+      const history = JSON.parse(existingJson);
+      const updated = history.filter(h => h.id !== searchId);
+      await AsyncStorage.setItem('@guest_history', JSON.stringify(updated));
+    }
+  } catch (e) {}
+
   const { error } = await supabase
     .from('search_history')
     .delete()
@@ -111,6 +172,21 @@ export const deleteSearch = async (searchId) => {
  * Get user profile
  */
 export const getProfile = async (userId) => {
+  if (userId === 'guest-user') {
+    try {
+      const json = await AsyncStorage.getItem('@guest_profile');
+      if (json) return JSON.parse(json);
+      return {
+        id: 'guest-user',
+        display_name: 'Guest Explorer',
+        bio: 'Offline Mode',
+        avatar_url: null
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -127,6 +203,23 @@ export const getProfile = async (userId) => {
  * Update user profile display name
  */
 export const updateProfile = async (userId, updates) => {
+  if (userId === 'guest-user') {
+    try {
+      const json = await AsyncStorage.getItem('@guest_profile');
+      const current = json ? JSON.parse(json) : {
+        id: 'guest-user',
+        display_name: 'Guest Explorer',
+        bio: 'Offline Mode',
+        avatar_url: null
+      };
+      const updated = { ...current, ...updates };
+      await AsyncStorage.setItem('@guest_profile', JSON.stringify(updated));
+      return updated;
+    } catch (e) {
+      return null;
+    }
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)

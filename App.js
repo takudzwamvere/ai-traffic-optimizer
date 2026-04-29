@@ -415,7 +415,8 @@ function MainApp() {
   const handleLocateMe = () => {
     const script = `
       if (typeof map !== 'undefined') {
-        map.setView([${gpsCoords.lat}, ${gpsCoords.lon}], 16, { animate: true, duration: 0.5 });
+        map.panTo({ lat: ${gpsCoords.lat}, lng: ${gpsCoords.lon} });
+        map.setZoom(16);
       }
     `;
     webViewRef.current?.injectJavaScript(script);
@@ -448,6 +449,9 @@ function MainApp() {
         }}
       />
 
+      {/* NETWORK STATUS BANNER */}
+      <NetworkStatus />
+
       {/* MAP LOADING OVERLAY — real tile-load detection via Leaflet event */}
       <MapLoadingOverlay visible={!mapTilesLoaded} />
 
@@ -459,7 +463,7 @@ function MainApp() {
 
       {/* LOCATE ME FAB */}
       <TouchableOpacity
-        style={[styles.locateFab, { bottom: isSheetVisible ? (isSheetExpanded ? '80%' : 440) : 80 }]}
+        style={[styles.locateFab, { bottom: isSheetVisible ? (isSheetExpanded ? 480 : 440) : 80 }]}
         onPress={handleLocateMe}
         activeOpacity={0.85}
       >

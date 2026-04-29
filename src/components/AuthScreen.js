@@ -7,7 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 
 export default function AuthScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, guestSignIn } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -142,6 +142,17 @@ export default function AuthScreen() {
             )}
           </TouchableOpacity>
 
+          {/* GUEST BYPASS */}
+          <TouchableOpacity
+            style={styles.guestBtn}
+            onPress={guestSignIn}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Feather name="user-check" size={16} color="#1A36A8" style={{ marginRight: 8 }} />
+            <Text style={styles.guestBtnText}>Continue as Guest (Offline Mode)</Text>
+          </TouchableOpacity>
+
           {/* TOGGLE MODE */}
           <TouchableOpacity
             style={styles.toggleRow}
@@ -263,6 +274,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  guestBtn: {
+    flexDirection: 'row',
+    borderWidth: 1.5,
+    borderColor: '#1A36A8',
+    borderRadius: 4,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  guestBtnText: {
+    color: '#1A36A8',
+    fontSize: 15,
+    fontWeight: '700',
   },
   toggleRow: {
     alignItems: 'center',
