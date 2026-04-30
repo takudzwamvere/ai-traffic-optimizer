@@ -115,7 +115,7 @@ export default function RoutePlanner({
         <View style={styles.suggestionsContainer}>
           <FlatList
             data={activeSuggestions}
-            keyExtractor={(item) => item.name}
+            keyExtractor={(item, index) => item.placeId || `${item.name}-${index}`}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity

@@ -88,13 +88,20 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
         componentRestrictions: { country: 'zw' }
       }, function(predictions, status) {
         if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-          var results = predictions.map(function(p) {
-            return {
-              name: p.structured_formatting.main_text,
-              description: p.description,
-              placeId: p.place_id
-            };
+          var seenIds = new Set();
+          var results = [];
+          
+          predictions.forEach(function(p) {
+            if (!seenIds.has(p.place_id)) {
+              seenIds.add(p.place_id);
+              results.push({
+                name: p.structured_formatting.main_text,
+                description: p.description,
+                placeId: p.place_id
+              });
+            }
           });
+          
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'AUTOCOMPLETE_RESULT', reqId: reqId, results: results }));
         } else {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'AUTOCOMPLETE_RESULT', reqId: reqId, results: [] }));
