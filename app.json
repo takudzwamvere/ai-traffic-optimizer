@@ -16,6 +16,12 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.plague.aitrafficoptimizer",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
