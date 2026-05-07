@@ -184,6 +184,10 @@ function MainApp() {
   };
 
   const handlePlaceDetailsResult = (data) => {
+    if (data.error) {
+      Alert.alert("Google Maps Error", "Could not fetch coordinates: " + data.error);
+      return;
+    }
     if (data.reqId === 'from' && data.coords) {
       setOriginMode('manual');
       setOriginCoords(data.coords);
@@ -199,8 +203,12 @@ function MainApp() {
   const handleOriginSelect = (item) => {
     setOriginQuery(item.name);
     setOriginSuggestions([]);
+    setOriginMode('manual');
     if (item.placeId) {
+      setOriginCoords(null); // Clear while fetching
       webViewRef.current?.injectJavaScript(`requestPlaceDetails('${item.placeId}', 'from'); true;`);
+    } else if (item.coords) {
+      setOriginCoords(item.coords);
     }
   };
 
@@ -218,6 +226,7 @@ function MainApp() {
     setDestinationQuery(item.name);
     setDestinationSuggestions([]);
     if (item.placeId) {
+      setDestinationCoords(null); // Clear while fetching
       webViewRef.current?.injectJavaScript(`requestPlaceDetails('${item.placeId}', 'to'); true;`);
     } else if (item.coords) {
       setDestinationCoords(item.coords);
@@ -255,8 +264,13 @@ function MainApp() {
 
     if (originQuery === "My Location" || originQuery.trim() === "") {
       resolvedOrigin = gpsCoords;
-    } else if (originMode === 'manual' && originCoords) {
-      resolvedOrigin = originCoords;
+    } else if (originMode === 'manual') {
+      if (originCoords) {
+        resolvedOrigin = originCoords;
+      } else {
+        Alert.alert("Fetching Coordinates", "Still getting exact location data from Google. Please try again in a second.");
+        return;
+      }
     } else {
       // User typed manually without selecting from dropdown
       const known = LOCATIONS.find(p => p.name.toLowerCase() === originQuery.toLowerCase());
@@ -275,14 +289,19 @@ function MainApp() {
     if (destinationCoords && destinationQuery === recentSearches.find(r => r.coords === destinationCoords)?.name) {
        // It's a recent search pick
        resolvedDest = destinationCoords;
-    } else if (destinationCoords && destinationSuggestions.length === 0) {
-       // Selected from autocomplete
-       resolvedDest = destinationCoords;
-    } else if (destinationQuery.length > 0) {
-      const known = LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
-      if (known) {
-        resolvedDest = { lat: known.lat, lon: known.lon };
-      }
+    } else if (destinationSuggestions.length === 0 && destinationQuery.length > 0) {
+       // They picked from autocomplete or typed manually
+       if (destinationCoords) {
+         resolvedDest = destinationCoords;
+       } else {
+         const known = LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
+         if (known) {
+           resolvedDest = { lat: known.lat, lon: known.lon };
+         } else if (originSuggestions.length === 0) {
+           Alert.alert("Fetching Coordinates", "Still getting exact destination data from Google. Please try again in a second.");
+           return;
+         }
+       }
     }
 
     if (!resolvedOrigin) { Alert.alert("Missing Origin", "Please enter a starting location or enable GPS."); return; }
