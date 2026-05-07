@@ -276,21 +276,37 @@ function MainApp() {
     setIsSheetExpanded(false);
 
     try {
-      // Fetch Live Weather First (used by traffic engine)
+      console.log("[App] Fetching weather data for:", resolvedOrigin.lat, resolvedOrigin.lon);
       const weatherData = await getCurrentWeather(resolvedOrigin.lat, resolvedOrigin.lon);
+      console.log("[App] Weather data fetched:", weatherData);
       setWeather(weatherData);
 
-      // Inject JS to fetch Google Directions
-      webViewRef.current?.injectJavaScript(`requestGoogleRoute(${resolvedOrigin.lat}, ${resolvedOrigin.lon}, ${resolvedDest.lat}, ${resolvedDest.lon}); true;`);
+      console.log("[App] Injecting JavaScript to fetch Google Directions...");
+      const script = `
+        try {
+          if (typeof requestGoogleRoute === 'function') {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'DEBUG', message: 'Calling requestGoogleRoute' }));
+            requestGoogleRoute(${resolvedOrigin.lat}, ${resolvedOrigin.lon}, ${resolvedDest.lat}, ${resolvedDest.lon});
+          } else {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'DEBUG', message: 'requestGoogleRoute not defined!' }));
+          }
+        } catch(err) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'DEBUG', message: 'Error injecting script: ' + err.message }));
+        }
+        true;
+      `;
+      webViewRef.current?.injectJavaScript(script);
     } catch (error) {
+      console.error("[App] Error in handleRouteSearch:", error);
       setLoading(false);
       Alert.alert("Error", "Failed to initiate route fetch.");
     }
   };
 
   const handleRouteResult = (data) => {
+    console.log("[App] handleRouteResult received data:", data.routes?.length, "routes", "error:", data.error);
     if (data.error || !data.routes || data.routes.length === 0) {
-      Alert.alert("No Routes", "Could not find any routes for these locations.");
+      Alert.alert("No Routes", "Could not find any routes for these locations. " + (data.error || ''));
       setLoading(false);
       return;
     }

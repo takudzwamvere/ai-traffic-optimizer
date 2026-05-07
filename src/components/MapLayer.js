@@ -10,11 +10,17 @@ const MapLayer = forwardRef(({ origin, onLoadEnd, onTilesLoaded, onRouteResult, 
   const handleMessage = (event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'DEBUG') {
+        console.log('[WebView Debug]', data.message);
+        return;
+      }
       if (data.type === 'MAP_TILES_LOADED' && onTilesLoaded) onTilesLoaded();
       if (data.type === 'ROUTE_RESULT' && onRouteResult) onRouteResult(data);
       if (data.type === 'AUTOCOMPLETE_RESULT' && onAutocompleteResult) onAutocompleteResult(data);
       if (data.type === 'PLACE_DETAILS_RESULT' && onPlaceDetailsResult) onPlaceDetailsResult(data);
-    } catch (e) {}
+    } catch (e) {
+      console.error("[MapLayer] Error parsing WebView message:", event.nativeEvent.data, e);
+    }
   };
 
   return (
