@@ -27,6 +27,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     var directionsService;
     var autocompleteService;
     var geocoder;
+    var placesService;
 
     function initMap() {
       var initLat = ${defaultCoords?.lat ?? -17.8292};
@@ -46,6 +47,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       directionsService = new google.maps.DirectionsService();
       autocompleteService = new google.maps.places.AutocompleteService();
       geocoder = new google.maps.Geocoder();
+      placesService = new google.maps.places.PlacesService(map);
 
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_TILES_LOADED' }));
@@ -114,18 +116,18 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       });
     }
 
-    // Geocode a placeId to get coordinates
     function requestPlaceDetails(placeId, reqId) {
-      geocoder.geocode({ placeId: placeId }, function(results, status) {
-        if (status === 'OK' && results && results[0]) {
-          var loc = results[0].geometry.location;
+      if (!placesService) return;
+      placesService.getDetails({ placeId: placeId, fields: ['geometry'] }, function(place, status) {
+        if (status === google.maps.places.PlacesServiceStatus.OK && place && place.geometry && place.geometry.location) {
+          var loc = place.geometry.location;
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'PLACE_DETAILS_RESULT',
             reqId: reqId,
             coords: { lat: loc.lat(), lon: loc.lng() }
           }));
         } else {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'PLACE_DETAILS_RESULT', reqId: reqId, coords: null }));
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'PLACE_DETAILS_RESULT', reqId: reqId, coords: null, error: status }));
         }
       });
     }
