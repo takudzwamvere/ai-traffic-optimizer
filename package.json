@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "expo start",
-    "start:clean": "fuser -k 8081/tcp 2>/dev/null; expo start -c",
+    "start": "EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 expo start",
+    "start:clean": "fuser -k 8081/tcp 2>/dev/null; EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 expo start -c",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
