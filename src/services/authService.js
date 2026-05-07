@@ -42,11 +42,17 @@ export const getUser = async () => {
 };
 
 /**
- * Get the current session
+ * Get the current session.
+ * Returns null on network errors so the auth flow can fall back to
+ * guest mode instead of throwing and breaking the restore flow.
  */
 export const getSession = async () => {
   const { data: { session }, error } = await supabase.auth.getSession();
-  if (error) throw error;
+  if (error) {
+    // Don't throw on network errors — caller will fall back to guest
+    console.warn('[Auth] getSession failed (network?):', error.message);
+    return null;
+  }
   return session;
 };
 

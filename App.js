@@ -1,6 +1,6 @@
 import locationData from './src/data/locations.json';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, View, Text, Alert, Keyboard, Platform, LayoutAnimation, UIManager, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { StyleSheet, View, Text, Alert, Keyboard, Platform, LayoutAnimation, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
@@ -26,12 +26,6 @@ import { processAndRankRoutes } from './src/utils/routeHelpers';
 import { getCurrentWeather } from './src/services/weatherApi';
 import { saveSearch, getSearchHistory, getProfile } from './src/services/dataService';
 
-// Enable Animations
-if (Platform.OS === 'android') {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-  }
-}
 
 const LOCATIONS = locationData;
 const DEFAULT_COORDS = { lat: -20.1706, lon: 28.5583 };

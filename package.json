@@ -4,9 +4,11 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
+    "start:clean": "fuser -k 8081/tcp 2>/dev/null; expo start -c",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "tunnel": "bash scripts/tunnel.sh"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

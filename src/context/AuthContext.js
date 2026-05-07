@@ -21,7 +21,7 @@ export function AuthProvider({ children }) {
     // Check for existing Supabase session, then fall back to persisted guest
     const restoreAuth = async () => {
       try {
-        const sess = await getSession();
+        const sess = await getSession(); // returns null on network error (won't throw)
         if (sess?.user) {
           setSession(sess);
           setUser(sess.user);
@@ -33,8 +33,11 @@ export function AuthProvider({ children }) {
           }
         }
       } catch {
-        // If everything fails, clear any stale guest data and show login
-        await AsyncStorage.removeItem(GUEST_STORAGE_KEY).catch(() => {});
+        // Unexpected error — still try to restore a saved guest before giving up
+        try {
+          const guestJson = await AsyncStorage.getItem(GUEST_STORAGE_KEY);
+          if (guestJson) setUser(JSON.parse(guestJson));
+        } catch { /* nothing we can do */ }
       } finally {
         setLoading(false);
       }
@@ -42,10 +45,16 @@ export function AuthProvider({ children }) {
 
     restoreAuth();
 
-    // Listen for Supabase auth changes (login / logout events)
+    // Listen for Supabase auth changes (login / logout events).
+    // Guard: do NOT overwrite a guest user — only handle real Supabase sessions.
     const { data: { subscription } } = onAuthStateChange((_event, sess) => {
-      setSession(sess);
-      setUser(sess?.user || null);
+      // If we currently have a guest user, ignore Supabase events
+      // (Supabase fires SIGNED_OUT with a null session when it can't reach the server)
+      setUser(prev => {
+        if (prev?.isGuest) return prev; // keep guest unchanged
+        return sess?.user || null;
+      });
+      setSession(sess?.user ? sess : null);
     });
 
     return () => subscription?.unsubscribe();
