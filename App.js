@@ -253,11 +253,12 @@ function MainApp() {
 
     let resolvedOrigin = null;
 
-    if (originCoords && originQuery && originQuery !== "My Location") {
-      // User picked from autocomplete
+    if (originQuery === "My Location" || originQuery.trim() === "") {
+      resolvedOrigin = gpsCoords;
+    } else if (originMode === 'manual' && originCoords) {
       resolvedOrigin = originCoords;
-    } else if (originQuery && originQuery !== "My Location") {
-      // User typed manually but didn't pick autocomplete, check internal DB
+    } else {
+      // User typed manually without selecting from dropdown
       const known = LOCATIONS.find(p => p.name.toLowerCase() === originQuery.toLowerCase());
       if (known) {
         resolvedOrigin = { lat: known.lat, lon: known.lon };
@@ -265,15 +266,23 @@ function MainApp() {
         Alert.alert("Unknown Origin", "Please select a valid starting location from the suggestions.");
         return;
       }
-    } else {
-      // Fallback to GPS
-      resolvedOrigin = gpsCoords;
     }
 
-    let resolvedDest = destinationCoords;
-    if (!resolvedDest && destinationQuery.length > 0) {
+    let resolvedDest = null;
+    
+    // For destination, if it's manual (from autocomplete) and coords exist, use them.
+    // Otherwise look up the typed string.
+    if (destinationCoords && destinationQuery === recentSearches.find(r => r.coords === destinationCoords)?.name) {
+       // It's a recent search pick
+       resolvedDest = destinationCoords;
+    } else if (destinationCoords && destinationSuggestions.length === 0) {
+       // Selected from autocomplete
+       resolvedDest = destinationCoords;
+    } else if (destinationQuery.length > 0) {
       const known = LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
-      if (known) resolvedDest = { lat: known.lat, lon: known.lon };
+      if (known) {
+        resolvedDest = { lat: known.lat, lon: known.lon };
+      }
     }
 
     if (!resolvedOrigin) { Alert.alert("Missing Origin", "Please enter a starting location or enable GPS."); return; }
@@ -497,9 +506,22 @@ function MainApp() {
       {/* ROUTE PLANNER — floating card below status bar */}
       <RoutePlanner
         originQuery={originQuery}
-        setOriginQuery={setOriginQuery}
+        setOriginQuery={(text) => {
+          setOriginQuery(text);
+          // If user starts typing, invalidate the autocomplete coordinate cache
+          if (originMode === 'manual') {
+            setOriginMode('typing');
+            setOriginCoords(null);
+          }
+        }}
         destinationQuery={destinationQuery}
-        setDestinationQuery={setDestinationQuery}
+        setDestinationQuery={(text) => {
+          setDestinationQuery(text);
+          // If user starts typing, invalidate the autocomplete coordinate cache
+          if (destinationCoords) {
+            setDestinationCoords(null);
+          }
+        }}
         originSuggestions={originSuggestions}
         destinationSuggestions={destinationSuggestions}
         onOriginSelect={handleOriginSelect}
