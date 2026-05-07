@@ -148,16 +148,19 @@ export const getSearchHistory = async (userId, limit = 10) => {
 /**
  * Delete a search from history
  */
-export const deleteSearch = async (searchId) => {
-  // Guest handling:
-  try {
-    const existingJson = await AsyncStorage.getItem('@guest_history');
-    if (existingJson) {
-      const history = JSON.parse(existingJson);
-      const updated = history.filter(h => h.id !== searchId);
-      await AsyncStorage.setItem('@guest_history', JSON.stringify(updated));
-    }
-  } catch (e) {}
+export const deleteSearch = async (searchId, userId) => {
+  // Only touch AsyncStorage for guest users
+  if (userId === 'guest-user') {
+    try {
+      const existingJson = await AsyncStorage.getItem('@guest_history');
+      if (existingJson) {
+        const history = JSON.parse(existingJson);
+        const updated = history.filter(h => h.id !== searchId);
+        await AsyncStorage.setItem('@guest_history', JSON.stringify(updated));
+      }
+    } catch (e) {}
+    return; // Guest history lives only in AsyncStorage, done
+  }
 
   const { error } = await supabase
     .from('search_history')

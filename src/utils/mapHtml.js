@@ -1,5 +1,10 @@
-const DEFAULT_COORDS = { lat: -17.8292, lon: 31.0522 };
+// Default to Bulawayo — matches App.js DEFAULT_COORDS
+const DEFAULT_COORDS = { lat: -20.1706, lon: 28.5583 };
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+if (!GOOGLE_MAPS_API_KEY) {
+  console.warn('[mapHtml] EXPO_PUBLIC_GOOGLE_MAPS_API_KEY is not set. The map will not load.');
+}
 
 export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
 <!DOCTYPE html>
