@@ -1,10 +1,11 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { getMapHtml } from '../utils/mapHtml';
 
 const MapLayer = forwardRef(({ origin, onLoadEnd, onTilesLoaded, onRouteResult, onAutocompleteResult, onPlaceDetailsResult }, ref) => {
-  const mapHtml = getMapHtml(origin);
+  // Memoize the HTML so the WebView doesn't reload on every GPS update
+  const mapHtml = useMemo(() => getMapHtml(origin), []);
 
   const handleMessage = (event) => {
     try {
