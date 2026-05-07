@@ -251,10 +251,23 @@ function MainApp() {
     setOriginSuggestions([]);
     setDestinationSuggestions([]);
 
-    let resolvedOrigin = originCoords || gpsCoords;
-    if (originMode === 'manual' && !originCoords && originQuery.length > 0) {
+    let resolvedOrigin = null;
+
+    if (originCoords && originQuery && originQuery !== "My Location") {
+      // User picked from autocomplete
+      resolvedOrigin = originCoords;
+    } else if (originQuery && originQuery !== "My Location") {
+      // User typed manually but didn't pick autocomplete, check internal DB
       const known = LOCATIONS.find(p => p.name.toLowerCase() === originQuery.toLowerCase());
-      if (known) resolvedOrigin = { lat: known.lat, lon: known.lon };
+      if (known) {
+        resolvedOrigin = { lat: known.lat, lon: known.lon };
+      } else {
+        Alert.alert("Unknown Origin", "Please select a valid starting location from the suggestions.");
+        return;
+      }
+    } else {
+      // Fallback to GPS
+      resolvedOrigin = gpsCoords;
     }
 
     let resolvedDest = destinationCoords;
