@@ -12,7 +12,6 @@ import MapLayer from './src/components/MapLayer';
 import RoutePlanner from './src/components/RoutePlanner';
 import RouteBottomSheet from './src/components/RouteBottomSheet';
 import RoadConditionsPanel from './src/components/RoadConditionsPanel';
-import RouteSummaryCard from './src/components/RouteSummaryCard';
 import NetworkStatus from './src/components/NetworkStatus';
 import WeatherWidget from './src/components/WeatherWidget';
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -559,16 +558,6 @@ function MainApp() {
         topInset={insets.top}
       />
 
-      {/* AI ROUTE SUMMARY CARD — only shown when bottom sheet is collapsed */}
-      {isSheetVisible && selectedRoute && !isSheetExpanded && (
-        <RouteSummaryCard 
-          route={selectedRoute}
-          departureMins={departureMins}
-          weather={weather}
-          roadConditions={roadConditions}
-          bottomOffset={260}
-        />
-      )}
 
       {/* BOTTOM SHEET */}
       <RouteBottomSheet
@@ -581,6 +570,7 @@ function MainApp() {
         departureMins={departureMins}
         onDepartureChange={handleDepartureChange}
         weather={weather}
+        roadConditions={roadConditions}
         singleRouteMessage={singleRouteMessage}
       >
         <RoadConditionsPanel

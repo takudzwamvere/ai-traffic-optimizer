@@ -16,6 +16,7 @@ export default function RouteBottomSheet({
   departureMins,
   onDepartureChange,
   weather,
+  roadConditions,
   children,
   singleRouteMessage,
 }) {
@@ -23,10 +24,8 @@ export default function RouteBottomSheet({
   if (!isSheetVisible || !selectedRoute) return null;
 
   // Get prediction data for the current time tab (now vs departure)
-  // We use the departure offset to pick the right prediction bucket
   const getBestBucket = (route) => {
     if (!route.predictions) return { formattedDuration: route.formattedDuration };
-    // Map departureMins to the closest pre-computed bucket (0, 15, 30)
     if (departureMins <= 7)  return route.predictions[0];
     if (departureMins <= 22) return route.predictions[15];
     return route.predictions[30];
@@ -34,12 +33,35 @@ export default function RouteBottomSheet({
 
   const currentData = getBestBucket(selectedRoute);
 
-  // Compute trend: compare the color at "now" vs color at "departure"
+  // Compute trend colors
   const nowColor = selectedRoute.predictions?.[0]?.color || selectedRoute.uiColor;
   const futureColor = currentData?.color || selectedRoute.uiColor;
 
+  // --- AI delay & conditions (merged from RouteSummaryCard) ---
+  const delayMins = Math.round((currentData.totalDelay || 0) / 60);
+
+  const conditions = [];
+  if (selectedRoute.uiReason?.includes('Peak')) conditions.push('Evening peak');
+  if (weather) {
+    if (weather.code >= 95) conditions.push('Storm conditions');
+    else if (weather.code >= 61 || weather.rain > 2.0) conditions.push('Heavy rain');
+    else if (weather.code >= 51 || weather.rain > 0.5) conditions.push('Light rain');
+  }
+  const hasSignificantIncident = roadConditions?.some(
+    r => r.incidentReason && r.delayMinutes > 2
+  );
+  if (hasSignificantIncident) conditions.push('Incident detected');
+  if (conditions.length === 0) conditions.push('Standard conditions');
+
+  // Delay colour: red only for significant delays on non-clear routes
+  const delayColor = delayMins > 5 && selectedRoute.uiColor !== COLORS.primary
+    ? '#EA4335'
+    : delayMins > 0
+    ? '#888'
+    : '#222';
+
   return (
-    <View style={[styles.bottomSheet, { height: isSheetExpanded ? '70%' : 250 }]}>
+    <View style={[styles.bottomSheet, { height: isSheetExpanded ? '70%' : 'auto' }]}>
       
       {/* CLICKABLE HEADER */}
       <TouchableOpacity onPress={toggleSheet} activeOpacity={0.9} style={styles.headerArea}>
@@ -76,6 +98,23 @@ export default function RouteBottomSheet({
                   <Text style={styles.departureTag}> · Dep. +{departureMins}m</Text>
                 )}
               </View>
+
+              {/* AI Delay + Conditions row (was RouteSummaryCard) */}
+              <View style={styles.aiRow}>
+                {delayMins > 0 && (
+                  <View style={styles.delayPill}>
+                    <Feather name="clock" size={11} color={delayColor} />
+                    <Text style={[styles.delayText, { color: delayColor }]}>
+                      +{delayMins} min delay
+                    </Text>
+                  </View>
+                )}
+                {conditions.map((cond, idx) => (
+                  <View key={idx} style={styles.conditionPill}>
+                    <Text style={styles.conditionText}>{cond}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
             
             {/* TOGGLE CHEVRON */}
@@ -95,7 +134,7 @@ export default function RouteBottomSheet({
         <ScrollView style={styles.expandedContent} contentContainerStyle={{ paddingBottom: 40 }}>
           <View style={styles.separator} />
 
-          {/* SINGLE ROUTE NOTICE — shown when OSRM found no genuine alternatives */}
+          {/* SINGLE ROUTE NOTICE */}
           {singleRouteMessage && (
             <View style={styles.singleRouteBanner}>
               <Feather name="info" size={14} color="#555" style={{ marginRight: 8 }} />
@@ -176,6 +215,42 @@ const styles = StyleSheet.create({
   duration: { fontSize: 30, fontWeight: '300', color: '#222', letterSpacing: -1 },
   distance: { fontSize: 16, color: '#777', fontWeight: '400', marginBottom: 4 },
   departureTag: { fontSize: 13, color: '#007AFF', fontWeight: '600' },
+
+  // AI delay + conditions merged from RouteSummaryCard
+  aiRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  delayPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F5F7FA',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E8ECEF',
+  },
+  delayText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  conditionPill: {
+    backgroundColor: '#F5F7FA',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E8ECEF',
+  },
+  conditionText: {
+    fontSize: 11,
+    color: '#555',
+    fontWeight: '600',
+  },
 
   toggleButton: { 
     width: 48, height: 48, borderRadius: 24, 
