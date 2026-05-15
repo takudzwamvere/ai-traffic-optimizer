@@ -3,8 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Upload the user's avatar image to Supabase Storage.
- * Image is stored at: avatars/{userId}/avatar.jpg
- * Returns the public URL on success.
+ * Image is stored at: avatars/{userId}/avatar.<ext>
+ * Returns the public URL (cache-busted) on success.
  */
 export const uploadAvatar = async (userId, localUri) => {
   if (userId === 'guest-user') {
@@ -17,13 +17,20 @@ export const uploadAvatar = async (userId, localUri) => {
   // 2. Convert blob to ArrayBuffer for Supabase upload
   const arrayBuffer = await new Response(blob).arrayBuffer();
 
-  const filePath = `${userId}/avatar.jpg`;
+  // Detect real extension & MIME type from the local URI
+  const ext = localUri.split('.').pop()?.toLowerCase() || 'jpg';
+  const mimeType =
+    ext === 'png'  ? 'image/png'  :
+    ext === 'gif'  ? 'image/gif'  :
+    ext === 'webp' ? 'image/webp' :
+    'image/jpeg';
+  const filePath = `${userId}/avatar.${ext}`;
 
   // 3. Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage
     .from('avatars')
     .upload(filePath, arrayBuffer, {
-      contentType: 'image/jpeg',
+      contentType: mimeType,
       upsert: true, // Overwrite existing avatar
     });
 
