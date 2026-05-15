@@ -129,9 +129,10 @@ export default function ProfileScreen({ visible, onClose }) {
             <View style={styles.historyCard}>
               {history.length === 0 ? (
                 <Text style={styles.emptyText}>No routes saved yet.</Text>
-              ) : (
-                history.slice(0, 4).map((item, index) => (
-                  <View key={item.id} style={[styles.historyItem, index === history.length-1 && { borderBottomWidth: 0 }]}>
+              ) : (() => {
+                const displayed = history.slice(0, 4);
+                return displayed.map((item, index) => (
+                  <View key={item.id} style={[styles.historyItem, index === displayed.length - 1 && { borderBottomWidth: 0 }]}>
                     <View style={styles.historyIcon}>
                       <MaterialIcons name="directions-car" size={18} color={COLORS.primary} />
                     </View>
@@ -141,8 +142,8 @@ export default function ProfileScreen({ visible, onClose }) {
                     </View>
                     <Text style={styles.historyTime}>{new Date(item.searched_at).toLocaleDateString()}</Text>
                   </View>
-                ))
-              )}
+                ));
+              })()}
             </View>
 
             {/* LOGOUT */}
