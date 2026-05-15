@@ -40,8 +40,11 @@ export default function AuthScreen() {
         await signIn(email.trim(), password);
       } else {
         await signUp(email.trim(), password);
-        Alert.alert('Account Created', 'You can now sign in with your credentials.');
-        setIsLogin(true);
+        Alert.alert(
+          'Check Your Email ✉️',
+          `A confirmation link has been sent to ${email.trim()}.\n\nClick the link in the email to activate your account, then come back here to sign in.`,
+          [{ text: 'OK', onPress: () => setIsLogin(true) }]
+        );
       }
     } catch (err) {
       setError(err.message || 'Authentication failed. Please try again.');
