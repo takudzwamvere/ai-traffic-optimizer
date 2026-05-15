@@ -75,11 +75,15 @@ export const processRouteSegments = (route, weatherData, timeOffset = 0) => {
 export const calculateRouteScore = (route, weatherData) => {
   const result = processRouteSegments(route, weatherData, 0);
   
-  // Baseline: 7 min clear per 6.6km (420s / 6600m)
-  const baseCalibratedSeconds = route.distance * (420 / 6600);
-  const predictedDuration = baseCalibratedSeconds + result.totalDelay;
+  // Use the actual Google Directions duration as the baseline so the score
+  // is meaningful for both short city trips and long inter-city routes.
+  // Then scale the AI traffic delay proportionally (per-km rate) on top.
+  const baseDurationSeconds = route.duration || (route.distance * (420 / 6600));
+  const delayRatePerMeter = result.totalDelay / Math.max(route.distance, 1);
+  const scaledDelay = delayRatePerMeter * route.distance;
+  const predictedDuration = baseDurationSeconds + scaledDelay;
   
-  const totalDelayMinutes = result.totalDelay / 60;
+  const totalDelayMinutes = scaledDelay / 60;
 
   // Weather severity penalty
   let weatherPenalty = 0;
@@ -184,16 +188,13 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
     [0, 15, 30].forEach(offset => {
       const result = processRouteSegments(route, weatherData, offset);
 
-      // Calibrated baseline: NUST to City Hall = 7 min clear (420s / 6600m)
-      const calibratedBaseSeconds = route.distance * (420 / 6600);
-
-      // *** THE REAL FIX: apply the computed delay to each time slot ***
-      // Each offset now produces a genuinely different ETA based on:
-      //   - Time-of-day traffic factor (interpolated to the minute)
-      //   - Rush-hour transition amplifier
-      //   - Deterministic seeded incident randomness
-      //   - Weather multiplier
-      const duration = calibratedBaseSeconds + result.totalDelay;
+      // Use Google's actual route duration as the base so ETAs are correct
+      // for both short city trips and long inter-city routes.
+      // The AI traffic delay is then applied as a proportional per-km adjustment.
+      const baseDurationSeconds = route.duration || (route.distance * (420 / 6600));
+      const delayRatePerMeter = result.totalDelay / Math.max(route.distance, 1);
+      const scaledDelay = delayRatePerMeter * route.distance;
+      const duration = baseDurationSeconds + scaledDelay;
       const minutes = Math.max(1, Math.round(duration / 60));
 
       // Compute avg predicted speed for summary context
