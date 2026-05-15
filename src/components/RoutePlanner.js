@@ -50,6 +50,8 @@ export default function RoutePlanner({
             value={originQuery}
             onChangeText={setOriginQuery}
             onFocus={() => setFocusedField('from')}
+            numberOfLines={1}
+            ellipsizeMode="tail"
           />
           {originQuery.length > 0 ? (
             <TouchableOpacity onPress={handleClearOrigin} style={styles.iconBtn}>
@@ -84,6 +86,8 @@ export default function RoutePlanner({
             onChangeText={setDestinationQuery}
             onFocus={() => setFocusedField('to')}
             onSubmitEditing={onSearch}
+            numberOfLines={1}
+            ellipsizeMode="tail"
           />
           {destinationQuery.length > 0 && (
             <TouchableOpacity onPress={handleClearDestination} style={styles.iconBtn}>
