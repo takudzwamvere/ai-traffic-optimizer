@@ -99,7 +99,17 @@ export default function RouteSummaryCard({ route, departureMins, weather, roadCo
         <View style={styles.divider} />
         <View>
           <Text style={styles.metricLabel}>AI Delay Parameter</Text>
-          <Text style={[styles.metricValue, { color: delayMins > 0 ? '#EA4335' : COLORS.text }]}>
+          <Text style={[
+            styles.metricValue,
+            {
+              // Red only when delay is significant AND the route isn't already labelled Clear
+              color: delayMins > 5 && badgeText !== 'Clear'
+                ? '#EA4335'
+                : delayMins > 0
+                ? '#888'   // grey for minor delays
+                : COLORS.text,
+            }
+          ]}>
             {delayMins > 0 ? `+${delayMins} min` : 'None'}
           </Text>
         </View>
