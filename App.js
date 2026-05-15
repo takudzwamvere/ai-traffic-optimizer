@@ -518,8 +518,8 @@ function MainApp() {
       {/* MAP LOADING OVERLAY — real tile-load detection via Leaflet event */}
       <MapLoadingOverlay visible={!mapTilesLoaded} />
 
-      {/* WEATHER WIDGET — top-right corner, below status bar */}
-      <WeatherWidget weather={weather} topOffset={insets.top + 12} />
+      {/* WEATHER WIDGET — moved below the search bar area */}
+      <WeatherWidget weather={weather} topOffset={insets.top + 80} />
 
       {/* LOADING OVERLAY (during search) */}
       <LoadingOverlay visible={loading} />
@@ -528,14 +528,13 @@ function MainApp() {
       <TouchableOpacity
         style={[styles.locateFab, {
           bottom: isSheetVisible
-            ? (isSheetExpanded ? '72%' : TAB_BAR_HEIGHT + 130) // Adjusted for tab bar + sheet header
+            ? (isSheetExpanded ? '72%' : TAB_BAR_HEIGHT + 130)
             : TAB_BAR_HEIGHT + 16
         }]}
         onPress={handleLocateMe}
         activeOpacity={0.85}
       >
-        <MaterialIcons name="my-location" size={22} color="#fff" />
-        <Text style={styles.locateFabText}>Locate Me</Text>
+        <MaterialIcons name="my-location" size={24} color="#fff" />
       </TouchableOpacity>
 
       {/* ROUTE PLANNER — floating card below status bar */}
@@ -692,9 +691,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

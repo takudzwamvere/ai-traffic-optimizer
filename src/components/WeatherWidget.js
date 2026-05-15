@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    zIndex: 5,
+    zIndex: 30,
   },
   text: {
     fontSize: 14,
