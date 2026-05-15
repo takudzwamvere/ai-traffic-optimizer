@@ -514,7 +514,11 @@ function MainApp() {
 
       {/* LOCATE ME FAB */}
       <TouchableOpacity
-        style={[styles.locateFab, { bottom: isSheetVisible ? (isSheetExpanded ? 480 : 440) : 80 }]}
+        style={[styles.locateFab, {
+          bottom: isSheetVisible
+            ? (isSheetExpanded ? '72%' : 250 + 16) // 16px above the collapsed sheet
+            : 100
+        }]}
         onPress={handleLocateMe}
         activeOpacity={0.85}
       >
