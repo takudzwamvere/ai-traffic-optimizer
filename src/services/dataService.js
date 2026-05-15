@@ -116,6 +116,8 @@ export const saveSearch = async (userId, searchData) => {
     }
   }
 
+  // .select().maybeSingle() is required in Supabase v2 to get the inserted row back.
+  // Without it, data is always null.
   const { data, error } = await supabase
     .from('search_history')
     .insert({
@@ -128,7 +130,9 @@ export const saveSearch = async (userId, searchData) => {
       dest_lon: searchData.destLon,
       route_count: searchData.routeCount || 0,
       best_duration_min: searchData.bestDurationMin || 0,
-    });
+    })
+    .select()
+    .maybeSingle();
   if (error) {
     console.warn('Failed to save search:', error.message);
     return null;
