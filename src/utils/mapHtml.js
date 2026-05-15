@@ -36,6 +36,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       map = new google.maps.Map(document.getElementById('map'), {
         center: { lat: initLat, lng: initLng },
         zoom: 13,
+        mapTypeId: 'hybrid',
         disableDefaultUI: true,
         gestureHandling: 'greedy',
         styles: [
