@@ -23,6 +23,7 @@ export default function RoutePlanner({
   onRecentSelect,
 }) {
   const [focusedField, setFocusedField] = useState(null); // 'from' | 'to' | null
+  const [isExpanded, setIsExpanded] = useState(false);
   const { theme } = useTheme();
   const c = theme.colors;
 
@@ -38,83 +39,116 @@ export default function RoutePlanner({
   const activeSuggestions = focusedField === 'from' ? originSuggestions : destinationSuggestions;
   const activeHandler = focusedField === 'from' ? onOriginSelect : onDestinationSelect;
 
+  const handleSearchPress = () => {
+    setIsExpanded(false);
+    onSearch();
+  };
+
   return (
     <View style={[styles.container, { paddingTop: topInset + 10 }]}>
-      <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
-        {/* FROM INPUT */}
-        <View style={styles.inputRow}>
-          <View style={styles.dotContainer}>
-            <View style={[styles.dot, { backgroundColor: c.primary }]} />
-          </View>
-          <TextInput
-            style={[styles.input, { color: c.text, backgroundColor: c.surface }]}
-            placeholder="From: My Location"
-            placeholderTextColor={c.textMuted}
-            value={originQuery}
-            onChangeText={setOriginQuery}
-            onFocus={() => setFocusedField('from')}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          />
-          {originQuery.length > 0 ? (
-            <TouchableOpacity onPress={handleClearOrigin} style={styles.iconBtn}>
-              <Feather name="x" size={18} color={c.textMuted} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={onUseMyLocation} style={styles.iconBtn}>
-              <MaterialIcons name="my-location" size={18} color={c.primary} />
-            </TouchableOpacity>
-          )}
-        </View>
+      
+      {/* COLLAPSED VIEW */}
+      {!isExpanded && (
+        <TouchableOpacity 
+          style={[styles.collapsedBar, { backgroundColor: c.surface, borderColor: c.border }]}
+          onPress={() => setIsExpanded(true)}
+          activeOpacity={0.9}
+        >
+          <Feather name="search" size={20} color={c.primary} style={{ marginRight: 12 }} />
+          <Text style={[styles.collapsedText, { color: destinationQuery ? c.text : c.textMuted }]}>
+            {destinationQuery || 'Where to?'}
+          </Text>
+          <View style={{ flex: 1 }} />
+          <Feather name="chevron-down" size={20} color={c.textMuted} />
+        </TouchableOpacity>
+      )}
 
-        {/* CONNECTOR LINE */}
-        <View style={styles.connectorRow}>
-          <View style={[styles.connectorLine, { backgroundColor: c.border }]} />
-          <TouchableOpacity onPress={onSwap} style={[styles.swapBtn, { backgroundColor: c.primaryLight }]}>
-            <Feather name="repeat" size={16} color={c.primary} />
+      {/* EXPANDED VIEW (Full Card) */}
+      {isExpanded && (
+        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+          {/* HEADER ROW WITH COLLAPSE BTN */}
+          <View style={styles.cardHeader}>
+            <Text style={[styles.cardHeaderTitle, { color: c.text }]}>Route Planner</Text>
+            <TouchableOpacity onPress={() => setIsExpanded(false)} style={styles.collapseBtn}>
+              <Feather name="chevron-up" size={22} color={c.textSub} />
+            </TouchableOpacity>
+          </View>
+
+          {/* FROM INPUT */}
+          <View style={styles.inputRow}>
+            <View style={styles.dotContainer}>
+              <View style={[styles.dot, { backgroundColor: c.primary }]} />
+            </View>
+            <TextInput
+              style={[styles.input, { color: c.text, backgroundColor: c.surface }]}
+              placeholder="From: My Location"
+              placeholderTextColor={c.textMuted}
+              value={originQuery}
+              onChangeText={setOriginQuery}
+              onFocus={() => setFocusedField('from')}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            />
+            {originQuery.length > 0 ? (
+              <TouchableOpacity onPress={handleClearOrigin} style={styles.iconBtn}>
+                <Feather name="x" size={18} color={c.textMuted} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={onUseMyLocation} style={styles.iconBtn}>
+                <MaterialIcons name="my-location" size={18} color={c.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* CONNECTOR LINE */}
+          <View style={styles.connectorRow}>
+            <View style={[styles.connectorLine, { backgroundColor: c.border }]} />
+            <TouchableOpacity onPress={onSwap} style={[styles.swapBtn, { backgroundColor: c.primaryLight }]}>
+              <Feather name="repeat" size={16} color={c.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* TO INPUT */}
+          <View style={styles.inputRow}>
+            <View style={styles.dotContainer}>
+              <View style={[styles.dot, { backgroundColor: c.danger }]} />
+            </View>
+            <TextInput
+              style={[styles.input, { color: c.text, backgroundColor: c.surface }]}
+              placeholder="To: Search destination..."
+              placeholderTextColor={c.textMuted}
+              value={destinationQuery}
+              onChangeText={setDestinationQuery}
+              onFocus={() => setFocusedField('to')}
+              onSubmitEditing={handleSearchPress}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            />
+            {destinationQuery.length > 0 && (
+              <TouchableOpacity onPress={handleClearDestination} style={styles.iconBtn}>
+                <Feather name="x" size={18} color={c.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* SEARCH BUTTON */}
+          <TouchableOpacity
+            onPress={handleSearchPress}
+            style={[styles.searchBtn, { backgroundColor: isConnected ? c.primary : c.textMuted }]}
+            disabled={!isConnected}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Feather name="navigation" size={18} color="#fff" />
+                <Text style={styles.searchBtnText}>Find Routes</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
-
-        {/* TO INPUT */}
-        <View style={styles.inputRow}>
-          <View style={styles.dotContainer}>
-            <View style={[styles.dot, { backgroundColor: c.danger }]} />
-          </View>
-          <TextInput
-            style={[styles.input, { color: c.text, backgroundColor: c.surface }]}
-            placeholder="To: Search destination..."
-            placeholderTextColor={c.textMuted}
-            value={destinationQuery}
-            onChangeText={setDestinationQuery}
-            onFocus={() => setFocusedField('to')}
-            onSubmitEditing={onSearch}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          />
-          {destinationQuery.length > 0 && (
-            <TouchableOpacity onPress={handleClearDestination} style={styles.iconBtn}>
-              <Feather name="x" size={18} color={c.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* SEARCH BUTTON */}
-        <TouchableOpacity
-          onPress={onSearch}
-          style={[styles.searchBtn, { backgroundColor: isConnected ? c.primary : c.textMuted }]}
-          disabled={!isConnected}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Feather name="navigation" size={18} color="#fff" />
-              <Text style={styles.searchBtnText}>Find Routes</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+      )}
 
       {/* AUTOCOMPLETE DROPDOWN */}
       {activeSuggestions.length > 0 && (
@@ -175,12 +209,45 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: 'white',
     borderRadius: 20,
-    padding: 14,
+    padding: 16,
     elevation: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 10,
+    borderWidth: 1,
+  },
+  collapsedBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 56,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    borderWidth: 1,
+  },
+  collapsedText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingLeft: 4,
+  },
+  cardHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  collapseBtn: {
+    padding: 4,
   },
   inputRow: {
     flexDirection: 'row',
