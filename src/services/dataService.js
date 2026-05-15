@@ -29,12 +29,12 @@ export const uploadAvatar = async (userId, localUri) => {
 
   if (uploadError) throw uploadError;
 
-  // 4. Get the public URL
+  // 4. Get the public URL (cache-busted so re-uploads show immediately)
   const { data } = supabase.storage
     .from('avatars')
     .getPublicUrl(filePath);
 
-  return data.publicUrl;
+  return `${data.publicUrl}?t=${Date.now()}`;
 };
 
 /**
