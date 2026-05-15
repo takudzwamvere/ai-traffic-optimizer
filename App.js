@@ -506,8 +506,8 @@ function MainApp() {
       {/* MAP LOADING OVERLAY — real tile-load detection via Leaflet event */}
       <MapLoadingOverlay visible={!mapTilesLoaded} />
 
-      {/* WEATHER WIDGET — below RoutePlanner card */}
-      <WeatherWidget weather={weather} topOffset={insets.top + 260} />
+      {/* WEATHER WIDGET — top-right corner, below status bar */}
+      <WeatherWidget weather={weather} topOffset={insets.top + 12} />
 
       {/* LOADING OVERLAY (during search) */}
       <LoadingOverlay visible={loading} />
