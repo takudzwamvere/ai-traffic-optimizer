@@ -49,29 +49,40 @@ export const uploadAvatar = async (userId, localUri) => {
  * Returns: { totalSearches, distinctDestinations, timeSavedMins }
  */
 export const getUserStats = async (userId) => {
-  let data = [];
-  
   if (userId === 'guest-user') {
     try {
       const json = await AsyncStorage.getItem('@guest_history');
-      data = json ? JSON.parse(json) : [];
+      const data = json ? JSON.parse(json) : [];
+      return {
+        totalSearches: data.length,
+        distinctDestinations: new Set(data.map(h => h.destination_name)).size,
+        timeSavedMins: data.reduce((acc, curr) => acc + (curr.best_duration_min > 0 ? 5 : 0), 0),
+      };
     } catch (e) {
       return { totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 };
     }
-  } else {
-    const { data: remoteData, error } = await supabase
-      .from('search_history')
-      .select('destination_name, best_duration_min')
-      .eq('user_id', userId);
-
-    if (error) return { totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 };
-    data = remoteData || [];
   }
 
-  const totalSearches = data.length;
-  const distinctDestinations = new Set(data.map(h => h.destination_name)).size;
-  // Estimate: if best route ETA > 0, we saved ~5 mins vs worst alternative
-  const timeSavedMins = data.reduce((acc, curr) => acc + (curr.best_duration_min > 0 ? 5 : 0), 0);
+  // Use a COUNT-only head request so we don't download all rows just to count them
+  const { count: totalSearches, error: countError } = await supabase
+    .from('search_history')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (countError) return { totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 };
+
+  // Fetch only the two columns we actually need for the remaining stats
+  const { data, error } = await supabase
+    .from('search_history')
+    .select('destination_name, best_duration_min')
+    .eq('user_id', userId);
+
+  if (error) return { totalSearches: totalSearches ?? 0, distinctDestinations: 0, timeSavedMins: 0 };
+
+  const rows = data || [];
+  const distinctDestinations = new Set(rows.map(h => h.destination_name)).size;
+  // Estimate: each search with a positive ETA saved ~5 mins vs the worst alternative
+  const timeSavedMins = rows.reduce((acc, curr) => acc + (curr.best_duration_min > 0 ? 5 : 0), 0);
 
   return { totalSearches, distinctDestinations, timeSavedMins };
 };
