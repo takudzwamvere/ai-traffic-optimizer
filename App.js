@@ -486,6 +486,8 @@ function MainApp() {
   // ==========================================
   // Render
   // ==========================================
+  const TAB_BAR_HEIGHT = 74 + Math.max(insets.bottom, 8);
+
   // Recent search quick-select handler
   const handleRecentSelect = useCallback((item) => {
     setDestinationQuery(item.name);
@@ -526,8 +528,8 @@ function MainApp() {
       <TouchableOpacity
         style={[styles.locateFab, {
           bottom: isSheetVisible
-            ? (isSheetExpanded ? '72%' : 250 + 16) // 16px above the collapsed sheet
-            : 100
+            ? (isSheetExpanded ? '72%' : TAB_BAR_HEIGHT + 130) // Adjusted for tab bar + sheet header
+            : TAB_BAR_HEIGHT + 16
         }]}
         onPress={handleLocateMe}
         activeOpacity={0.85}
@@ -583,6 +585,7 @@ function MainApp() {
         weather={weather}
         roadConditions={roadConditions}
         singleRouteMessage={singleRouteMessage}
+        bottomOffset={TAB_BAR_HEIGHT}
       >
         <RoadConditionsPanel
           roadConditions={roadConditions}

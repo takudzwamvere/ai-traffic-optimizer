@@ -18,8 +18,9 @@ export default function RouteBottomSheet({
   onDepartureChange,
   weather,
   roadConditions,
-  children,
   singleRouteMessage,
+  bottomOffset = 0,
+  children
 }) {
 
   if (!isSheetVisible || !selectedRoute) return null;
@@ -65,7 +66,11 @@ export default function RouteBottomSheet({
     : '#222';
 
   return (
-    <View style={[styles.bottomSheet, { height: isSheetExpanded ? '70%' : 'auto', backgroundColor: c.surface }]}>
+    <View style={[styles.bottomSheet, { 
+      height: isSheetExpanded ? '70%' : 'auto', 
+      backgroundColor: c.surface,
+      bottom: bottomOffset 
+    }]}>
       
       {/* CLICKABLE HEADER */}
       <TouchableOpacity onPress={toggleSheet} activeOpacity={0.9} style={[styles.headerArea, { backgroundColor: c.surface }]}>
