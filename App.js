@@ -500,8 +500,8 @@ function MainApp() {
         }}
       />
 
-      {/* NETWORK STATUS BANNER */}
-      <NetworkStatus />
+
+
 
       {/* MAP LOADING OVERLAY — real tile-load detection via Leaflet event */}
       <MapLoadingOverlay visible={!mapTilesLoaded} />
