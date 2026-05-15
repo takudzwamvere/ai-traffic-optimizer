@@ -5,6 +5,7 @@ import { COLORS } from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
 import { getProfile, getSearchHistory, getUserStats } from '../services/dataService';
 import EditProfileScreen from './EditProfileScreen';
+import { useTheme } from '../context/ThemeContext';
 
 export default function ProfileScreen({ visible, onClose }) {
   const { user, signOut } = useAuth();
@@ -13,6 +14,8 @@ export default function ProfileScreen({ visible, onClose }) {
   const [stats, setStats] = useState({ totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 });
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const { theme } = useTheme();
+  const c = theme.colors;
 
   const loadData = async () => {
     if (!user?.id) return;
@@ -63,16 +66,16 @@ export default function ProfileScreen({ visible, onClose }) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
         
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: c.surface, borderBottomColor: c.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Feather name="chevron-down" size={28} color={COLORS.text} />
+            <Feather name="chevron-down" size={28} color={c.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Profile</Text>
+          <Text style={[styles.headerTitle, { color: c.text }]}>My Profile</Text>
           <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editBtn}>
-            <Text style={styles.editBtnText}>Edit</Text>
+            <Text style={[styles.editBtnText, { color: c.primary }]}>Edit</Text>
           </TouchableOpacity>
         </View>
 
@@ -84,72 +87,72 @@ export default function ProfileScreen({ visible, onClose }) {
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             
             {/* PROFILE INFO */}
-            <View style={styles.profileCard}>
+            <View style={[styles.profileCard, { backgroundColor: c.surface, shadowColor: theme.dark ? '#000' : '#000' }]}>
               {/* Avatar: show real image or initials fallback */}
               {profile?.avatar_url ? (
                 <Image
                   source={{ uri: profile.avatar_url }}
-                  style={styles.avatarImage}
+                  style={[styles.avatarImage, { borderColor: c.surface }]}
                 />
               ) : (
-                <View style={styles.avatar}>
+                <View style={[styles.avatar, { backgroundColor: c.primary, shadowColor: c.primary }]}>
                   <Text style={styles.avatarText}>{initials}</Text>
                 </View>
               )}
-              <Text style={styles.name}>{profile?.display_name || 'Traffic Explorer'}</Text>
-              <Text style={styles.email}>{user.email}</Text>
+              <Text style={[styles.name, { color: c.text }]}>{profile?.display_name || 'Traffic Explorer'}</Text>
+              <Text style={[styles.email, { color: c.textSub }]}>{user.email}</Text>
               {profile?.bio ? (
-                <Text style={styles.bio} numberOfLines={2}>{profile.bio}</Text>
+                <Text style={[styles.bio, { color: c.textSub }]} numberOfLines={2}>{profile.bio}</Text>
               ) : null}
-              <Text style={styles.joined}>Member since {new Date(user.created_at).toLocaleDateString()}</Text>
+              <Text style={[styles.joined, { color: c.textMuted }]}>Member since {new Date(user.created_at).toLocaleDateString()}</Text>
             </View>
 
             {/* ACTIVITY STATS */}
-            <Text style={styles.sectionTitle}>Activity</Text>
+            <Text style={[styles.sectionTitle, { color: c.text }]}>Activity</Text>
             <View style={styles.statsContainer}>
-              <View style={styles.statBox}>
-                <Feather name="navigation" size={20} color={COLORS.primary} />
-                <Text style={styles.statValue}>{totalSearches}</Text>
-                <Text style={styles.statLabel}>Searches</Text>
+              <View style={[styles.statBox, { backgroundColor: c.surface }]}>
+                <Feather name="navigation" size={20} color={c.primary} />
+                <Text style={[styles.statValue, { color: c.text }]}>{totalSearches}</Text>
+                <Text style={[styles.statLabel, { color: c.textSub }]}>Searches</Text>
               </View>
-              <View style={styles.statBox}>
+              <View style={[styles.statBox, { backgroundColor: c.surface }]}>
                 <Feather name="map-pin" size={20} color={COLORS.warning} />
-                <Text style={styles.statValue}>{distinctDestinations}</Text>
-                <Text style={styles.statLabel}>Destinations</Text>
+                <Text style={[styles.statValue, { color: c.text }]}>{distinctDestinations}</Text>
+                <Text style={[styles.statLabel, { color: c.textSub }]}>Destinations</Text>
               </View>
-              <View style={styles.statBox}>
-                <Feather name="clock" size={20} color={COLORS.primary} />
-                <Text style={styles.statValue}>{timeSavedMins}m</Text>
-                <Text style={styles.statLabel}>Time Saved</Text>
+              <View style={[styles.statBox, { backgroundColor: c.surface }]}>
+                <Feather name="clock" size={20} color={c.primary} />
+                <Text style={[styles.statValue, { color: c.text }]}>{timeSavedMins}m</Text>
+                <Text style={[styles.statLabel, { color: c.textSub }]}>Time Saved</Text>
               </View>
             </View>
 
             {/* RECENT SEARCHES */}
-            <Text style={styles.sectionTitle}>Recent Routes</Text>
-            <View style={styles.historyCard}>
+            <Text style={[styles.sectionTitle, { color: c.text }]}>Recent Routes</Text>
+            <View style={[styles.historyCard, { backgroundColor: c.surface }]}>
               {history.length === 0 ? (
-                <Text style={styles.emptyText}>No routes saved yet.</Text>
+                <Text style={[styles.emptyText, { color: c.textMuted }]}>No routes saved yet.</Text>
               ) : (() => {
                 const displayed = history.slice(0, 4);
                 return displayed.map((item, index) => (
-                  <View key={item.id} style={[styles.historyItem, index === displayed.length - 1 && { borderBottomWidth: 0 }]}>
-                    <View style={styles.historyIcon}>
-                      <MaterialIcons name="directions-car" size={18} color={COLORS.primary} />
+                  <View key={item.id} style={[styles.historyItem, { borderBottomColor: c.border }, index === displayed.length - 1 && { borderBottomWidth: 0 }]}>
+                    <View style={[styles.historyIcon, { backgroundColor: c.primaryLight }]}>
+                      <MaterialIcons name="directions-car" size={18} color={c.primary} />
                     </View>
                     <View style={styles.historyDetails}>
-                      <Text style={styles.historyDest} numberOfLines={1}>{item.destination_name}</Text>
-                      <Text style={styles.historyOrigin} numberOfLines={1}>From: {item.origin_name}</Text>
+                      <Text style={[styles.historyDest, { color: c.text }]} numberOfLines={1}>{item.destination_name}</Text>
+                      <Text style={[styles.historyOrigin, { color: c.textSub }]} numberOfLines={1}>From: {item.origin_name}</Text>
                     </View>
-                    <Text style={styles.historyTime}>{new Date(item.searched_at).toLocaleDateString()}</Text>
+                    <Text style={[styles.historyTime, { color: c.textMuted }]}>{new Date(item.searched_at).toLocaleDateString()}</Text>
                   </View>
                 ));
               })()}
             </View>
 
             {/* LOGOUT */}
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut} activeOpacity={0.8}>
-              <Feather name="log-out" size={18} color={COLORS.danger} />
-              <Text style={styles.logoutText}>Sign Out</Text>
+            <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: theme.dark ? '#3D1A1A' : '#FFF5F5' }]} onPress={handleSignOut} activeOpacity={0.8}>
+              <Feather name="log-out" size={18} color={c.danger} />
+              <Text style={[styles.logoutText, { color: c.danger }]}>Sign Out</Text>
             </TouchableOpacity>
 
             <View style={{height: 40}} />

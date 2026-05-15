@@ -9,6 +9,7 @@ import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { updateProfile, uploadAvatar } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function EditProfileScreen({ visible, onClose, profile }) {
   const { user } = useAuth();
@@ -17,6 +18,8 @@ export default function EditProfileScreen({ visible, onClose, profile }) {
   const [localAvatarUri, setLocalAvatarUri] = useState(null); // local file picked
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState(null); // saved URL
   const [loading, setLoading] = useState(false);
+  const { theme } = useTheme();
+  const c = theme.colors;
 
   useEffect(() => {
     if (visible && profile) {
@@ -89,19 +92,19 @@ export default function EditProfileScreen({ visible, onClose, profile }) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="formSheet">
       <KeyboardAvoidingView 
-        style={styles.container} 
+        style={[styles.container, { backgroundColor: c.bg }]} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: c.surface, borderBottomColor: c.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={[styles.cancelText, { color: c.textSub }]}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <Text style={[styles.headerTitle, { color: c.text }]}>Edit Profile</Text>
           <TouchableOpacity onPress={handleSave} style={styles.saveBtn} disabled={loading}>
             {loading
-              ? <ActivityIndicator size="small" color={COLORS.primary} />
-              : <Text style={styles.saveText}>Save</Text>
+              ? <ActivityIndicator size="small" color={c.primary} />
+              : <Text style={[styles.saveText, { color: c.primary }]}>Save</Text>
             }
           </TouchableOpacity>
         </View>
@@ -112,32 +115,32 @@ export default function EditProfileScreen({ visible, onClose, profile }) {
           <View style={styles.avatarSection}>
             <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
               {avatarSource ? (
-                <Image source={avatarSource} style={styles.avatarImage} />
+                <Image source={avatarSource} style={[styles.avatarImage, { borderColor: c.surface }]} />
               ) : (
-                <View style={styles.avatarPlaceholder}>
+                <View style={[styles.avatarPlaceholder, { backgroundColor: c.primary, borderColor: c.surface }]}>
                   <Text style={styles.avatarInitials}>{displayInitials}</Text>
                 </View>
               )}
               {/* Camera badge overlay */}
-              <View style={styles.cameraBadge}>
+              <View style={[styles.cameraBadge, { backgroundColor: c.primary, borderColor: c.surface }]}>
                 <Feather name="camera" size={14} color="#fff" />
               </View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.changePhotoBtn} onPress={handlePickImage}>
-              <Text style={styles.changePhotoText}>Change Profile Photo</Text>
+            <TouchableOpacity style={[styles.changePhotoBtn, { backgroundColor: c.primaryLight }]} onPress={handlePickImage}>
+              <Text style={[styles.changePhotoText, { color: c.primary }]}>Change Profile Photo</Text>
             </TouchableOpacity>
-            <Text style={styles.photoHint}>Square images work best</Text>
+            <Text style={[styles.photoHint, { color: c.textMuted }]}>Square images work best</Text>
           </View>
 
           {/* DISPLAY NAME */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Display Name</Text>
-            <View style={styles.inputContainer}>
-              <Feather name="user" size={18} color="#999" style={styles.inputIcon} />
+            <Text style={[styles.label, { color: c.textSub }]}>Display Name</Text>
+            <View style={[styles.inputContainer, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <Feather name="user" size={18} color={c.textMuted} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: c.text }]}
                 placeholder="How should we call you?"
-                placeholderTextColor="#999"
+                placeholderTextColor={c.textMuted}
                 value={displayName}
                 onChangeText={setDisplayName}
               />
@@ -146,12 +149,12 @@ export default function EditProfileScreen({ visible, onClose, profile }) {
 
           {/* BIO */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Bio (Optional)</Text>
-            <View style={[styles.inputContainer, styles.bioContainer]}>
+            <Text style={[styles.label, { color: c.textSub }]}>Bio (Optional)</Text>
+            <View style={[styles.inputContainer, styles.bioContainer, { backgroundColor: c.surface, borderColor: c.border }]}>
               <TextInput
-                style={[styles.input, styles.bioInput]}
+                style={[styles.input, styles.bioInput, { color: c.text }]}
                 placeholder="A little bit about your commute..."
-                placeholderTextColor="#999"
+                placeholderTextColor={c.textMuted}
                 value={bio}
                 onChangeText={setBio}
                 multiline

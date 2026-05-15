@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 
 export default function WeatherWidget({ weather, topOffset = 110 }) {
   if (!weather) return null;
@@ -36,10 +37,13 @@ export default function WeatherWidget({ weather, topOffset = 110 }) {
     color = '#A9A9A9';
   }
 
+  const { theme } = useTheme();
+  const c = theme.colors;
+
   return (
-    <View style={[styles.container, { top: topOffset }]}>
+    <View style={[styles.container, { top: topOffset, backgroundColor: c.surface }]}>
       <Feather name={iconName} size={18} color={color} style={{ marginRight: 6 }} />
-      <Text style={styles.text}>{label} {Math.round(temp)}°C</Text>
+      <Text style={[styles.text, { color: c.text }]}>{label} {Math.round(temp)}°C</Text>
     </View>
   );
 }

@@ -21,6 +21,7 @@ import AuthScreen from './src/components/AuthScreen';
 import ProfileScreen from './src/components/ProfileScreen';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { processAndRankRoutes } from './src/utils/routeHelpers';
 import { getCurrentWeather } from './src/services/weatherApi';
 import { saveSearch, getSearchHistory, getProfile } from './src/services/dataService';
@@ -33,6 +34,8 @@ function MainApp() {
   const insets = useSafeAreaInsets();
   const webViewRef = useRef(null);
   const { user } = useAuth();
+  const { theme, cycleTheme } = useTheme();
+  const c = theme.colors;
 
   // --- Dual-Location State ---
   const [originMode, setOriginMode] = useState('gps');       // 'gps' | 'manual'
@@ -81,6 +84,14 @@ function MainApp() {
   useEffect(() => {
     loadProfileAvatar();
   }, [loadProfileAvatar]);
+
+  // Inject new map style whenever the theme changes
+  useEffect(() => {
+    if (webViewRef.current && theme.mapStyle) {
+      const js = `applyMapStyle(${JSON.stringify(JSON.stringify(theme.mapStyle))}); true;`;
+      webViewRef.current.injectJavaScript(js);
+    }
+  }, [theme.key]);
 
   // --- Refs ---
   const locationSubscription = useRef(null);
@@ -483,8 +494,8 @@ function MainApp() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <StatusBar style={theme.dark ? 'light' : 'dark'} translucent backgroundColor="transparent" />
 
 
       <MapLayer
@@ -589,25 +600,36 @@ function MainApp() {
       />
 
       {/* BOTTOM TAB BAR — respects home indicator on iPhone */}
-      <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <View style={[styles.tabBar, { 
+        paddingBottom: Math.max(insets.bottom, 8),
+        backgroundColor: c.tabBg,
+        borderTopColor: c.border
+      }]}>
         <TouchableOpacity style={styles.tabItem} onPress={() => { }}>
-          <Feather name="map" size={24} color={COLORS.primary} />
-          <Text style={[styles.tabText, styles.tabTextActive]}>Map</Text>
+          <Feather name="map" size={24} color={c.primary} />
+          <Text style={[styles.tabText, { color: c.primary, fontWeight: '700' }]}>Map</Text>
         </TouchableOpacity>
+
+        {/* THEME TOGGLE */}
+        <TouchableOpacity style={styles.tabItem} onPress={cycleTheme}>
+          <Text style={{ fontSize: 20 }}>{theme.emoji}</Text>
+          <Text style={[styles.tabText, { color: c.textSub }]}>{theme.name}</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.tabItem} onPress={() => setIsProfileVisible(true)}>
           {profileAvatarUrl ? (
             <Image
               source={{ uri: profileAvatarUrl }}
-              style={styles.tabAvatar}
+              style={[styles.tabAvatar, { borderColor: c.primary }]}
               onError={(e) => {
                 console.warn('[Avatar] Image failed to load:', e.nativeEvent.error);
                 setProfileAvatarUrl(null); // fall back to icon
               }}
             />
           ) : (
-            <Feather name="user" size={24} color="#999" />
+            <Feather name="user" size={24} color={c.textMuted} />
           )}
-          <Text style={styles.tabText}>Profile</Text>
+          <Text style={[styles.tabText, { color: c.textSub }]}>Profile</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -628,7 +650,11 @@ function AuthGate() {
     );
   }
 
-  return isAuthenticated ? <MainApp /> : <AuthScreen />;
+  return (
+    <ThemeProvider>
+      {isAuthenticated ? <MainApp /> : <AuthScreen />}
+    </ThemeProvider>
+  );
 }
 
 export default function App() {

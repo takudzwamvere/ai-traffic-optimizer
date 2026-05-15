@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, ActivityIndicator, Text, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 
 export default function RoutePlanner({
   originQuery,
@@ -22,6 +23,8 @@ export default function RoutePlanner({
   onRecentSelect,
 }) {
   const [focusedField, setFocusedField] = useState(null); // 'from' | 'to' | null
+  const { theme } = useTheme();
+  const c = theme.colors;
 
   const handleClearOrigin = () => {
     setOriginQuery('');
@@ -37,16 +40,16 @@ export default function RoutePlanner({
 
   return (
     <View style={[styles.container, { paddingTop: topInset + 10 }]}>
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
         {/* FROM INPUT */}
         <View style={styles.inputRow}>
           <View style={styles.dotContainer}>
-            <View style={[styles.dot, { backgroundColor: '#007AFF' }]} />
+            <View style={[styles.dot, { backgroundColor: c.primary }]} />
           </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: c.text, backgroundColor: c.surface }]}
             placeholder="From: My Location"
-            placeholderTextColor="#999"
+            placeholderTextColor={c.textMuted}
             value={originQuery}
             onChangeText={setOriginQuery}
             onFocus={() => setFocusedField('from')}
@@ -55,33 +58,32 @@ export default function RoutePlanner({
           />
           {originQuery.length > 0 ? (
             <TouchableOpacity onPress={handleClearOrigin} style={styles.iconBtn}>
-              <Feather name="x" size={18} color="#999" />
+              <Feather name="x" size={18} color={c.textMuted} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={onUseMyLocation} style={styles.iconBtn}>
-              <MaterialIcons name="my-location" size={18} color="#007AFF" />
+              <MaterialIcons name="my-location" size={18} color={c.primary} />
             </TouchableOpacity>
           )}
         </View>
 
         {/* CONNECTOR LINE */}
         <View style={styles.connectorRow}>
-          <View style={styles.connectorLine} />
-          {/* SWAP BUTTON */}
-          <TouchableOpacity onPress={onSwap} style={styles.swapBtn}>
-            <Feather name="repeat" size={16} color="#007AFF" />
+          <View style={[styles.connectorLine, { backgroundColor: c.border }]} />
+          <TouchableOpacity onPress={onSwap} style={[styles.swapBtn, { backgroundColor: c.primaryLight }]}>
+            <Feather name="repeat" size={16} color={c.primary} />
           </TouchableOpacity>
         </View>
 
         {/* TO INPUT */}
         <View style={styles.inputRow}>
           <View style={styles.dotContainer}>
-            <View style={[styles.dot, { backgroundColor: COLORS.danger }]} />
+            <View style={[styles.dot, { backgroundColor: c.danger }]} />
           </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: c.text, backgroundColor: c.surface }]}
             placeholder="To: Search destination..."
-            placeholderTextColor="#999"
+            placeholderTextColor={c.textMuted}
             value={destinationQuery}
             onChangeText={setDestinationQuery}
             onFocus={() => setFocusedField('to')}
@@ -91,7 +93,7 @@ export default function RoutePlanner({
           />
           {destinationQuery.length > 0 && (
             <TouchableOpacity onPress={handleClearDestination} style={styles.iconBtn}>
-              <Feather name="x" size={18} color="#999" />
+              <Feather name="x" size={18} color={c.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -99,7 +101,7 @@ export default function RoutePlanner({
         {/* SEARCH BUTTON */}
         <TouchableOpacity
           onPress={onSearch}
-          style={[styles.searchBtn, (!isConnected) && styles.searchBtnDisabled]}
+          style={[styles.searchBtn, { backgroundColor: isConnected ? c.primary : c.textMuted }]}
           disabled={!isConnected}
           activeOpacity={0.85}
         >
@@ -116,21 +118,21 @@ export default function RoutePlanner({
 
       {/* AUTOCOMPLETE DROPDOWN */}
       {activeSuggestions.length > 0 && (
-        <View style={styles.suggestionsContainer}>
+        <View style={[styles.suggestionsContainer, { backgroundColor: c.surface, borderColor: c.border }]}>
           <FlatList
             data={activeSuggestions}
             keyExtractor={(item, index) => item.placeId || `${item.name}-${index}`}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.suggestionItem}
+                style={[styles.suggestionItem, { borderBottomColor: c.border }]}
                 onPress={() => {
                   activeHandler(item);
                   setFocusedField(null);
                 }}
               >
-                <Feather name="map-pin" size={16} color="#666" style={{ marginRight: 10 }} />
-                <Text style={styles.suggestionText}>{item.name}</Text>
+                <Feather name="map-pin" size={16} color={c.textSub} style={{ marginRight: 10 }} />
+                <Text style={[styles.suggestionText, { color: c.text }]}>{item.name}</Text>
               </TouchableOpacity>
             )}
           />
@@ -148,11 +150,11 @@ export default function RoutePlanner({
           {recentSearches.map((item, i) => (
             <TouchableOpacity
               key={i}
-              style={styles.recentChip}
+              style={[styles.recentChip, { backgroundColor: c.surface }]}
               onPress={() => onRecentSelect?.(item)}
             >
-              <Feather name="clock" size={12} color="#007AFF" />
-              <Text style={styles.recentChipText} numberOfLines={1}>{item.name}</Text>
+              <Feather name="clock" size={12} color={c.primary} />
+              <Text style={[styles.recentChipText, { color: c.text }]} numberOfLines={1}>{item.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>

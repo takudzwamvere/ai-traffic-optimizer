@@ -54,6 +54,14 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       }
     }
 
+    // Called from React Native when the user changes theme
+    function applyMapStyle(stylesJson) {
+      if (!map) return;
+      try {
+        map.setOptions({ styles: JSON.parse(stylesJson) });
+      } catch(e) {}
+    }
+
     // Called from React Native to update the blue user-location dot
     function setUserLocation(lat, lon) {
       if (!map) return;

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 import DeparturePlanner from './DeparturePlanner';
 import TrafficForecastSummary from './TrafficForecastSummary';
 import TrafficTrendIndicator from './TrafficTrendIndicator';
@@ -22,6 +23,9 @@ export default function RouteBottomSheet({
 }) {
 
   if (!isSheetVisible || !selectedRoute) return null;
+
+  const { theme } = useTheme();
+  const c = theme.colors;
 
   // Get prediction data for the current time tab (now vs departure)
   const getBestBucket = (route) => {
@@ -61,11 +65,11 @@ export default function RouteBottomSheet({
     : '#222';
 
   return (
-    <View style={[styles.bottomSheet, { height: isSheetExpanded ? '70%' : 'auto' }]}>
+    <View style={[styles.bottomSheet, { height: isSheetExpanded ? '70%' : 'auto', backgroundColor: c.surface }]}>
       
       {/* CLICKABLE HEADER */}
-      <TouchableOpacity onPress={toggleSheet} activeOpacity={0.9} style={styles.headerArea}>
-        <View style={styles.sheetHandle} />
+      <TouchableOpacity onPress={toggleSheet} activeOpacity={0.9} style={[styles.headerArea, { backgroundColor: c.surface }]}>
+        <View style={[styles.sheetHandle, { backgroundColor: c.handle }]} />
         
         {/* HEADER CARD */}
         <View style={styles.mainCard}>
@@ -74,10 +78,10 @@ export default function RouteBottomSheet({
               {/* Route Label Row */}
               <View style={{ flexDirection:'row', alignItems:'center', flexWrap: 'wrap', gap: 6 }}>
                 <Text style={[styles.cardTitle, { color: selectedRoute.uiColor }]}>{selectedRoute.uiLabel}</Text>
-                <View style={styles.dotSeparator}/>
-                <Text style={styles.cardReason}>{selectedRoute.uiReason}</Text>
+                <View style={[styles.dotSeparator, { backgroundColor: c.textMuted }]}/>
+                <Text style={[styles.cardReason, { color: c.textSub }]}>{selectedRoute.uiReason}</Text>
                 {selectedRoute.corridorName && (
-                  <Text style={styles.corridorName}>{selectedRoute.corridorName}</Text>
+                  <Text style={[styles.corridorName, { color: c.primary }]}>{selectedRoute.corridorName}</Text>
                 )}
               </View>
 
@@ -92,26 +96,24 @@ export default function RouteBottomSheet({
               
               {/* ETA and Distance */}
               <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 4 }}>
-                <Text style={styles.duration}>{currentData.formattedDuration}</Text>
-                <Text style={styles.distance}> {selectedRoute.distanceKm} km</Text>
+                <Text style={[styles.duration, { color: c.text }]}>{currentData.formattedDuration}</Text>
+                <Text style={[styles.distance, { color: c.textSub }]}> {selectedRoute.distanceKm} km</Text>
                 {departureMins > 0 && (
-                  <Text style={styles.departureTag}> · Dep. +{departureMins}m</Text>
+                  <Text style={[styles.departureTag, { color: c.primary }]}> · Dep. +{departureMins}m</Text>
                 )}
               </View>
 
-              {/* AI Delay + Conditions row (was RouteSummaryCard) */}
+              {/* AI Delay + Conditions row */}
               <View style={styles.aiRow}>
                 {delayMins > 0 && (
-                  <View style={styles.delayPill}>
+                  <View style={[styles.delayPill, { backgroundColor: c.inputBg, borderColor: c.border }]}>
                     <Feather name="clock" size={11} color={delayColor} />
-                    <Text style={[styles.delayText, { color: delayColor }]}>
-                      +{delayMins} min delay
-                    </Text>
+                    <Text style={[styles.delayText, { color: delayColor }]}>+{delayMins} min delay</Text>
                   </View>
                 )}
                 {conditions.map((cond, idx) => (
-                  <View key={idx} style={styles.conditionPill}>
-                    <Text style={styles.conditionText}>{cond}</Text>
+                  <View key={idx} style={[styles.conditionPill, { backgroundColor: c.inputBg, borderColor: c.border }]}>
+                    <Text style={[styles.conditionText, { color: c.textSub }]}>{cond}</Text>
                   </View>
                 ))}
               </View>
@@ -131,14 +133,14 @@ export default function RouteBottomSheet({
       
       {/* EXPANDED CONTENT */}
       {isSheetExpanded && (
-        <ScrollView style={styles.expandedContent} contentContainerStyle={{ paddingBottom: 40 }}>
-          <View style={styles.separator} />
+        <ScrollView style={[styles.expandedContent, { backgroundColor: c.surface }]} contentContainerStyle={{ paddingBottom: 40 }}>
+          <View style={[styles.separator, { backgroundColor: c.border }]} />
 
           {/* SINGLE ROUTE NOTICE */}
           {singleRouteMessage && (
-            <View style={styles.singleRouteBanner}>
-              <Feather name="info" size={14} color="#555" style={{ marginRight: 8 }} />
-              <Text style={styles.singleRouteBannerText}>{singleRouteMessage}</Text>
+            <View style={[styles.singleRouteBanner, { backgroundColor: c.inputBg, borderColor: c.border }]}>
+              <Feather name="info" size={14} color={c.textSub} style={{ marginRight: 8 }} />
+              <Text style={[styles.singleRouteBannerText, { color: c.textSub }]}>{singleRouteMessage}</Text>
             </View>
           )}
 

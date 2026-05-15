@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function AuthScreen() {
   const { signIn, signUp, guestSignIn } = useAuth();
@@ -15,6 +16,8 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const { theme } = useTheme();
+  const c = theme.colors;
 
   const handleSubmit = async () => {
     setError('');
@@ -54,7 +57,7 @@ export default function AuthScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: c.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -64,30 +67,30 @@ export default function AuthScreen() {
         {/* HEADER (Back arrow & Title) */}
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.backBtn}>
-            <Feather name="arrow-left" size={24} color="#333" />
+            <Feather name="arrow-left" size={24} color={c.text} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.title}>{isLogin ? 'Login' : 'Sign Up'}</Text>
+          <Text style={[styles.title, { color: c.primary }]}>{isLogin ? 'Login' : 'Sign Up'}</Text>
         </View>
 
         {/* FORM */}
         <View style={styles.formContainer}>
           {/* ERROR DISPLAY */}
           {error ? (
-            <View style={styles.errorBox}>
-              <Feather name="alert-circle" size={14} color="#D32F2F" />
-              <Text style={styles.errorText}>{error}</Text>
+            <View style={[styles.errorBox, { backgroundColor: theme.dark ? '#3D1A1A' : '#FFEBEE' }]}>
+              <Feather name="alert-circle" size={14} color={c.danger} />
+              <Text style={[styles.errorText, { color: c.danger }]}>{error}</Text>
             </View>
           ) : null}
 
           {/* EMAIL INPUT */}
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { backgroundColor: c.surface, borderColor: c.border }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: c.text }]}
               placeholder="Email"
-              placeholderTextColor="#999"
+              placeholderTextColor={c.textMuted}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -97,27 +100,27 @@ export default function AuthScreen() {
           </View>
 
           {/* PASSWORD INPUT */}
-          <View style={[styles.inputContainer, styles.passwordContainer]}>
+          <View style={[styles.inputContainer, styles.passwordContainer, { backgroundColor: c.inputBg, borderColor: 'transparent' }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: c.text }]}
               placeholder="Password"
-              placeholderTextColor="#999"
+              placeholderTextColor={c.textMuted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-              <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color="#666" />
+              <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color={c.textMuted} />
             </TouchableOpacity>
           </View>
 
           {/* CONFIRM PASSWORD (Signup only) */}
           {!isLogin && (
-            <View style={[styles.inputContainer, styles.passwordContainer]}>
+            <View style={[styles.inputContainer, styles.passwordContainer, { backgroundColor: c.inputBg, borderColor: 'transparent' }]}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: c.text }]}
                 placeholder="Confirm Password"
-                placeholderTextColor="#999"
+                placeholderTextColor={c.textMuted}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showPassword}
@@ -127,13 +130,13 @@ export default function AuthScreen() {
 
           {isLogin && (
             <TouchableOpacity style={styles.forgotBtn}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              <Text style={[styles.forgotText, { color: c.primary }]}>Forgot Password?</Text>
             </TouchableOpacity>
           )}
 
           {/* SUBMIT BUTTON */}
           <TouchableOpacity
-            style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+            style={[styles.submitBtn, { backgroundColor: c.primary }, loading && { backgroundColor: c.textMuted }]}
             onPress={handleSubmit}
             disabled={loading}
             activeOpacity={0.85}
@@ -147,13 +150,13 @@ export default function AuthScreen() {
 
           {/* GUEST BYPASS */}
           <TouchableOpacity
-            style={styles.guestBtn}
+            style={[styles.guestBtn, { borderColor: c.primary }]}
             onPress={guestSignIn}
             disabled={loading}
             activeOpacity={0.85}
           >
-            <Feather name="user-check" size={16} color="#1A36A8" style={{ marginRight: 8 }} />
-            <Text style={styles.guestBtnText}>Continue as Guest (Offline Mode)</Text>
+            <Feather name="user-check" size={16} color={c.primary} style={{ marginRight: 8 }} />
+            <Text style={[styles.guestBtnText, { color: c.primary }]}>Continue as Guest (Offline Mode)</Text>
           </TouchableOpacity>
 
           {/* TOGGLE MODE */}
@@ -165,9 +168,9 @@ export default function AuthScreen() {
               setConfirmPassword('');
             }}
           >
-            <Text style={styles.toggleText}>
+            <Text style={[styles.toggleText, { color: c.text }]}>
               {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <Text style={styles.toggleLink}>{isLogin ? 'Sign up' : 'Login'}</Text>
+              <Text style={[styles.toggleLink, { color: c.primary }]}>{isLogin ? 'Sign up' : 'Login'}</Text>
             </Text>
           </TouchableOpacity>
         </View>
