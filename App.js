@@ -97,7 +97,7 @@ function MainApp() {
           searchedAt: h.searched_at,
         }));
         setRecentSearches(recent);
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [user?.id]);
 
@@ -282,25 +282,25 @@ function MainApp() {
     }
 
     let resolvedDest = null;
-    
+
     // For destination, if it's manual (from autocomplete) and coords exist, use them.
     // Otherwise look up the typed string.
     if (destinationCoords && destinationQuery === recentSearches.find(r => r.coords === destinationCoords)?.name) {
-       // It's a recent search pick
-       resolvedDest = destinationCoords;
+      // It's a recent search pick
+      resolvedDest = destinationCoords;
     } else if (destinationSuggestions.length === 0 && destinationQuery.length > 0) {
-       // They picked from autocomplete or typed manually
-       if (destinationCoords) {
-         resolvedDest = destinationCoords;
-       } else {
-         const known = LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
-         if (known) {
-           resolvedDest = { lat: known.lat, lon: known.lon };
-         } else if (originSuggestions.length === 0) {
-           Alert.alert("Fetching Coordinates", "Still getting exact destination data from Google. Please try again in a second.");
-           return;
-         }
-       }
+      // They picked from autocomplete or typed manually
+      if (destinationCoords) {
+        resolvedDest = destinationCoords;
+      } else {
+        const known = LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
+        if (known) {
+          resolvedDest = { lat: known.lat, lon: known.lon };
+        } else if (originSuggestions.length === 0) {
+          Alert.alert("Fetching Coordinates", "Still getting exact destination data from Google. Please try again in a second.");
+          return;
+        }
+      }
     }
 
     if (!resolvedOrigin) { Alert.alert("Missing Origin", "Please enter a starting location or enable GPS."); return; }
@@ -360,9 +360,9 @@ function MainApp() {
     }
 
     const processingResult = processAndRankRoutes(data.routes, weather, originName, destName);
-    
+
     setSingleRouteMessage(processingResult.singleRouteMessage || null);
-    
+
     if (processingResult.routes.length === 0) {
       Alert.alert("No Routes", "Processed routes were empty.");
       setLoading(false);
@@ -390,7 +390,7 @@ function MainApp() {
         destLon: resolvedDest?.lon,
         routeCount: processingResult.routes.length,
         bestDurationMin: best.predictions?.[0]?.duration || 0,
-      }).catch(() => {});
+      }).catch(() => { });
 
       setRecentSearches(prev => {
         const filtered = prev.filter(s => s.name !== destinationQuery);
@@ -409,7 +409,7 @@ function MainApp() {
 
     // Build segmented GeoJSON — use the departure offset bucket
     let segments;
-    if (offsetMins <= 7)  segments = route.predictions?.[0]?.segments;
+    if (offsetMins <= 7) segments = route.predictions?.[0]?.segments;
     else if (offsetMins <= 22) segments = route.predictions?.[15]?.segments;
     else segments = route.predictions?.[30]?.segments;
 
@@ -580,17 +580,17 @@ function MainApp() {
       </RouteBottomSheet>
 
       {/* PROFILE MODULE */}
-      <ProfileScreen 
-        visible={isProfileVisible} 
+      <ProfileScreen
+        visible={isProfileVisible}
         onClose={() => {
           setIsProfileVisible(false);
           loadProfileAvatar(); // Refresh avatar in tab bar after editing
-        }} 
+        }}
       />
 
       {/* BOTTOM TAB BAR — respects home indicator on iPhone */}
       <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => {}}>
+        <TouchableOpacity style={styles.tabItem} onPress={() => { }}>
           <Feather name="map" size={24} color={COLORS.primary} />
           <Text style={[styles.tabText, styles.tabTextActive]}>Map</Text>
         </TouchableOpacity>
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#E8ECF0',
-    height: 72,
+    height: 74,
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 20,
