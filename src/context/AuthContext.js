@@ -67,6 +67,9 @@ export function AuthProvider({ children }) {
 
   const handleSignUp = async (email, password) => {
     const data = await signUp(email, password);
+    // Clear any persisted guest session so it can't shadow the real account
+    // on the next app launch if the Supabase token refresh fails.
+    await AsyncStorage.removeItem(GUEST_STORAGE_KEY).catch(() => {});
     return data;
   };
 
