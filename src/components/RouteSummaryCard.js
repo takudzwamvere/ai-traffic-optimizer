@@ -45,9 +45,12 @@ export default function RouteSummaryCard({ route, departureMins, weather, roadCo
     else if (weather.code >= 61 || weather.rain > 2.0) conditions.push('Heavy rain');
     else if (weather.code >= 51 || weather.rain > 0.5) conditions.push('Light rain');
   }
-  if (roadConditions && roadConditions.some(r => r.incidentReason)) {
-    conditions.push('Incident detected');
-  }
+  // Only flag an incident if it actually contributes meaningful delay (>2 min),
+  // preventing a contradiction between "Clear" badge and "Incident detected" pill.
+  const hasSignificantIncident = roadConditions?.some(
+    r => r.incidentReason && r.delayMinutes > 2
+  );
+  if (hasSignificantIncident) conditions.push('Incident detected');
   if (conditions.length === 0) conditions.push('Standard condition');
 
   // Overall Color badge calculation
