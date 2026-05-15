@@ -225,8 +225,9 @@ export const updateProfile = async (userId, updates) => {
 
   const { data, error } = await supabase
     .from('profiles')
-    .update(updates)
-    .eq('id', userId);
+    .upsert({ id: userId, ...updates }, { onConflict: 'id' })
+    .select()
+    .maybeSingle();
   if (error) {
     console.warn('Failed to update profile:', error.message);
     return null;
