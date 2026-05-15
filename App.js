@@ -555,14 +555,14 @@ function MainApp() {
         topInset={insets.top}
       />
 
-      {/* AI ROUTE SUMMARY CARD (Floats above bottom sheet) */}
-      {isSheetVisible && selectedRoute && (
+      {/* AI ROUTE SUMMARY CARD — only shown when bottom sheet is collapsed */}
+      {isSheetVisible && selectedRoute && !isSheetExpanded && (
         <RouteSummaryCard 
           route={selectedRoute}
           departureMins={departureMins}
           weather={weather}
           roadConditions={roadConditions}
-          bottomOffset={isSheetExpanded ? '70%' : 260}
+          bottomOffset={260}
         />
       )}
 
