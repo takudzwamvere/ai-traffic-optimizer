@@ -95,6 +95,9 @@ function MainApp() {
 
   // --- Refs ---
   const locationSubscription = useRef(null);
+  // Flags to prevent autocomplete from re-firing after the user selects a suggestion
+  const skipOriginAutocomplete = useRef(false);
+  const skipDestAutocomplete = useRef(false);
 
   // ==========================================
   // Load search history from Supabase on mount
@@ -173,6 +176,11 @@ function MainApp() {
   // Autocomplete — Google Places Webview integration
   // ==========================================
   useEffect(() => {
+    // Skip if this change came from selecting a suggestion (not user typing)
+    if (skipOriginAutocomplete.current) {
+      skipOriginAutocomplete.current = false;
+      return;
+    }
     if (originQuery.length > 2 && originQuery !== "My Location") {
       webViewRef.current?.injectJavaScript(`requestAutocompleteSuggestions('${originQuery.replace(/'/g, "\\'")}', 'from'); true;`);
     } else {
@@ -181,6 +189,11 @@ function MainApp() {
   }, [originQuery]);
 
   useEffect(() => {
+    // Skip if this change came from selecting a suggestion (not user typing)
+    if (skipDestAutocomplete.current) {
+      skipDestAutocomplete.current = false;
+      return;
+    }
     if (destinationQuery.length > 2) {
       webViewRef.current?.injectJavaScript(`requestAutocompleteSuggestions('${destinationQuery.replace(/'/g, "\\'")}', 'to'); true;`);
     } else {
@@ -211,6 +224,7 @@ function MainApp() {
   // Origin Selection
   // ==========================================
   const handleOriginSelect = (item) => {
+    skipOriginAutocomplete.current = true; // Prevent autocomplete from re-firing
     setOriginQuery(item.name);
     setOriginSuggestions([]);
     setOriginMode('manual');
@@ -233,10 +247,11 @@ function MainApp() {
   // Destination Selection
   // ==========================================
   const handleDestinationSelect = (item) => {
+    skipDestAutocomplete.current = true; // Prevent autocomplete from re-firing
     setDestinationQuery(item.name);
     setDestinationSuggestions([]);
     if (item.placeId) {
-      setDestinationCoords(null); // Clear while fetching
+      setDestinationCoords(null); // Clear while fetching — coords arrive via handlePlaceDetailsResult
       webViewRef.current?.injectJavaScript(`requestPlaceDetails('${item.placeId}', 'to'); true;`);
     } else if (item.coords) {
       setDestinationCoords(item.coords);
@@ -294,23 +309,24 @@ function MainApp() {
 
     let resolvedDest = null;
 
-    // For destination, if it's manual (from autocomplete) and coords exist, use them.
-    // Otherwise look up the typed string.
-    if (destinationCoords && destinationQuery === recentSearches.find(r => r.coords === destinationCoords)?.name) {
-      // It's a recent search pick
+    // Priority 1: We already have coords from a selection or recent search — use them directly.
+    // This check must come BEFORE looking at the suggestions array, because the
+    // autocomplete useEffect can briefly re-populate suggestions after a selection.
+    if (destinationCoords && destinationQuery.length > 0) {
       resolvedDest = destinationCoords;
-    } else if (destinationSuggestions.length === 0 && destinationQuery.length > 0) {
-      // They picked from autocomplete or typed manually
-      if (destinationCoords) {
-        resolvedDest = destinationCoords;
+    } else if (destinationQuery.length > 0) {
+      // Priority 2: No coords yet — try the known-locations list (typed or not-yet-geocoded)
+      const known = LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
+      if (known) {
+        resolvedDest = { lat: known.lat, lon: known.lon };
+      } else if (destinationSuggestions.length > 0) {
+        // Suggestions are still showing — user hasn't selected one yet
+        Alert.alert("Select a Destination", "Please select a destination from the suggestions list.");
+        return;
       } else {
-        const known = LOCATIONS.find(p => p.name.toLowerCase() === destinationQuery.toLowerCase());
-        if (known) {
-          resolvedDest = { lat: known.lat, lon: known.lon };
-        } else if (originSuggestions.length === 0) {
-          Alert.alert("Fetching Coordinates", "Still getting exact destination data from Google. Please try again in a second.");
-          return;
-        }
+        // No coords, no known place, no suggestions — still waiting on Google geocoding
+        Alert.alert("Fetching Coordinates", "Still getting exact destination data from Google. Please try again in a second.");
+        return;
       }
     }
 
