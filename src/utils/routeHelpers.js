@@ -1,6 +1,7 @@
 import { COLORS } from '../constants/colors.js';
 import { calculateSegmentSpeed } from './trafficEngine.js';
 import { findCorridor, matchRouteToCorridorRoute, isInPeakHours } from '../data/corridors.js';
+import { extractRoadNames } from './routeUtils.js';
 
 // --- Road Conditions Extraction ---
 export const processRouteSegments = (route, weatherData, timeOffset = 0) => {
@@ -118,24 +119,6 @@ const deduplicateRoadConditions = (conditions) => {
     }
   }
   return Array.from(map.values());
-};
-
-// --- Extract road names from route for corridor matching ---
-const extractRoadNames = (route) => {
-  const names = [];
-  if (route.legs) {
-    route.legs.forEach(leg => {
-      leg.steps?.forEach(step => {
-        if (step.name && step.name !== 'Unnamed Road') {
-          names.push(step.name);
-        }
-        if (step.ref) {
-          names.push(step.ref);
-        }
-      });
-    });
-  }
-  return names;
 };
 
 // --- Main Processing Pipeline ---
@@ -275,5 +258,3 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
       : null,
   };
 };
-
-export const ensureThreeRoutes = processAndRankRoutes;

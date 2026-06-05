@@ -5,6 +5,7 @@
  * by storing corridor performance scores based on historical data.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { extractRoadNames } from '../utils/routeUtils.js';
 
 const ML_STORAGE_KEY = '@ai_traffic_ml_weights';
 
@@ -98,19 +99,3 @@ export const trainModelOffFeedback = async (corridorName, predictedMinutes, actu
   }
 };
 
-/**
- * Utility to extract road names from the pure OSRM route object
- */
-const extractRoadNames = (route) => {
-  const names = [];
-  if (route.legs) {
-    route.legs.forEach(leg => {
-      leg.steps?.forEach(step => {
-        if (step.name && step.name !== 'Unnamed Road') {
-          names.push(step.name);
-        }
-      });
-    });
-  }
-  return names;
-};
