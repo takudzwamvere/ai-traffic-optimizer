@@ -39,9 +39,13 @@ function MainApp() {
 
   // --- Dual-Location State ---
   const [originMode, setOriginMode] = useState('gps');       // 'gps' | 'manual'
+  // Ref so the GPS watcher callback always reads the latest mode without re-subscribing
+  const originModeRef = useRef('gps');
   const [gpsCoords, setGpsCoords] = useState(DEFAULT_COORDS); // Always-updating GPS
   const [originCoords, setOriginCoords] = useState(null);     // Used for routing
   const [destinationCoords, setDestinationCoords] = useState(null);
+  // True while we're waiting for Google to geocode a typed origin (replaces implicit 'typing' mode)
+  const [isFetchingOriginCoords, setIsFetchingOriginCoords] = useState(false);
 
   // --- Input Text State ---
   const [originQuery, setOriginQuery] = useState('');
@@ -118,7 +122,14 @@ function MainApp() {
   // ==========================================
   // GPS Location Tracking
   // ==========================================
+  // Keep originModeRef in sync so the watcher callback can read the latest
+  // value without the effect needing originMode as a dependency.
   useEffect(() => {
+    originModeRef.current = originMode;
+  }, [originMode]);
+
+  useEffect(() => {
+    let sub;
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -126,7 +137,7 @@ function MainApp() {
         return;
       }
 
-      locationSubscription.current = await Location.watchPositionAsync(
+      sub = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
           timeInterval: 2000,
@@ -139,8 +150,8 @@ function MainApp() {
           // Always update GPS reference
           setGpsCoords(newCoords);
 
-          // Only update routing origin if in GPS mode
-          if (originMode === 'gps') {
+          // Read the latest mode via ref — no re-subscription needed
+          if (originModeRef.current === 'gps') {
             setOriginCoords(newCoords);
           }
 
@@ -153,14 +164,13 @@ function MainApp() {
           webViewRef.current?.injectJavaScript(script);
         }
       );
+      locationSubscription.current = sub;
     })();
 
     return () => {
-      if (locationSubscription.current) {
-        locationSubscription.current.remove();
-      }
+      sub?.remove();
     };
-  }, [originMode]);
+  }, []); // Empty deps — watcher runs for the app's lifetime
 
   // ==========================================
   // Network Connectivity
@@ -214,6 +224,7 @@ function MainApp() {
     if (data.reqId === 'from' && data.coords) {
       setOriginMode('manual');
       setOriginCoords(data.coords);
+      setIsFetchingOriginCoords(false); // Geocoding complete
     }
     if (data.reqId === 'to' && data.coords) {
       setDestinationCoords(data.coords);
@@ -230,9 +241,11 @@ function MainApp() {
     setOriginMode('manual');
     if (item.placeId) {
       setOriginCoords(null); // Clear while fetching
+      setIsFetchingOriginCoords(true);
       webViewRef.current?.injectJavaScript(`requestPlaceDetails('${item.placeId}', 'from'); true;`);
     } else if (item.coords) {
       setOriginCoords(item.coords);
+      setIsFetchingOriginCoords(false);
     }
   };
 
@@ -241,6 +254,7 @@ function MainApp() {
     setOriginCoords(gpsCoords);
     setOriginQuery('');
     setOriginSuggestions([]);
+    setIsFetchingOriginCoords(false);
   };
 
   // ==========================================
@@ -292,19 +306,23 @@ function MainApp() {
     } else if (originMode === 'manual') {
       if (originCoords) {
         resolvedOrigin = originCoords;
-      } else {
+      } else if (isFetchingOriginCoords) {
+        // Still waiting for Google to geocode the typed origin
         Alert.alert("Fetching Coordinates", "Still getting exact location data from Google. Please try again in a second.");
         return;
+      } else {
+        // User typed manually without selecting from dropdown
+        const known = LOCATIONS.find(p => p.name.toLowerCase() === originQuery.toLowerCase());
+        if (known) {
+          resolvedOrigin = { lat: known.lat, lon: known.lon };
+        } else {
+          Alert.alert("Unknown Origin", "Please select a valid starting location from the suggestions.");
+          return;
+        }
       }
     } else {
-      // User typed manually without selecting from dropdown
-      const known = LOCATIONS.find(p => p.name.toLowerCase() === originQuery.toLowerCase());
-      if (known) {
-        resolvedOrigin = { lat: known.lat, lon: known.lon };
-      } else {
-        Alert.alert("Unknown Origin", "Please select a valid starting location from the suggestions.");
-        return;
-      }
+      // GPS mode but no coords yet
+      resolvedOrigin = gpsCoords;
     }
 
     let resolvedDest = null;
@@ -558,9 +576,11 @@ function MainApp() {
         originQuery={originQuery}
         setOriginQuery={(text) => {
           setOriginQuery(text);
-          // If user starts typing, invalidate the autocomplete coordinate cache
+          // If user starts typing while a manual location was set, clear the
+          // cached coords and mark that we're waiting for new geocoding.
           if (originMode === 'manual') {
-            setOriginMode('typing');
+            setOriginMode('manual');
+            setIsFetchingOriginCoords(true);
             setOriginCoords(null);
           }
         }}
