@@ -52,6 +52,21 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_TILES_LOADED' }));
       }
+
+      // ── Safe message channel from React Native ──────────────────────────
+      // React Native sends typed JSON messages via window.dispatchEvent so
+      // that user-supplied strings are never interpolated into JS code.
+      window.addEventListener('message', function(event) {
+        var msg;
+        try { msg = JSON.parse(event.data); } catch(e) { return; }
+        if (!msg || !msg.type) return;
+
+        if (msg.type === 'AUTOCOMPLETE') {
+          requestAutocompleteSuggestions(msg.query, msg.reqId);
+        } else if (msg.type === 'PLACE_DETAILS') {
+          requestPlaceDetails(msg.placeId, msg.reqId);
+        }
+      });
     }
 
     // Called from React Native when the user changes theme

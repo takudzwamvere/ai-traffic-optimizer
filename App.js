@@ -105,6 +105,21 @@ function MainApp() {
   const skipDestAutocomplete = useRef(false);
 
   // ==========================================
+  // Safe WebView messaging (avoids JS string injection)
+  // ==========================================
+  // Instead of building JS strings with user input, we post a typed JSON
+  // message and let the WebView dispatch it to the right function.
+  const sendToWebView = useCallback((msg) => {
+    const js = `
+      (function(){
+        var e = new MessageEvent('message', { data: ${JSON.stringify(JSON.stringify(msg))} });
+        window.dispatchEvent(e);
+      })(); true;
+    `;
+    webViewRef.current?.injectJavaScript(js);
+  }, []);
+
+  // ==========================================
   // Initialise ML engine on mount (loads learned corridor weights)
   // ==========================================
   useEffect(() => {
@@ -200,11 +215,12 @@ function MainApp() {
       return;
     }
     if (originQuery.length > 2 && originQuery !== "My Location") {
-      webViewRef.current?.injectJavaScript(`requestAutocompleteSuggestions('${originQuery.replace(/'/g, "\\'")}', 'from'); true;`);
+      // Safe: query sent as JSON data, never interpolated into JS
+      sendToWebView({ type: 'AUTOCOMPLETE', query: originQuery, reqId: 'from' });
     } else {
       setOriginSuggestions([]);
     }
-  }, [originQuery]);
+  }, [originQuery, sendToWebView]);
 
   useEffect(() => {
     // Skip if this change came from selecting a suggestion (not user typing)
@@ -213,11 +229,12 @@ function MainApp() {
       return;
     }
     if (destinationQuery.length > 2) {
-      webViewRef.current?.injectJavaScript(`requestAutocompleteSuggestions('${destinationQuery.replace(/'/g, "\\'")}', 'to'); true;`);
+      // Safe: query sent as JSON data, never interpolated into JS
+      sendToWebView({ type: 'AUTOCOMPLETE', query: destinationQuery, reqId: 'to' });
     } else {
       setDestinationSuggestions([]);
     }
-  }, [destinationQuery]);
+  }, [destinationQuery, sendToWebView]);
 
   const handleAutocompleteResult = (data) => {
     if (data.reqId === 'from') setOriginSuggestions(data.results);
@@ -250,7 +267,8 @@ function MainApp() {
     if (item.placeId) {
       setOriginCoords(null); // Clear while fetching
       setIsFetchingOriginCoords(true);
-      webViewRef.current?.injectJavaScript(`requestPlaceDetails('${item.placeId}', 'from'); true;`);
+      // Safe: placeId is an opaque Google-issued string but we still avoid interpolation
+      sendToWebView({ type: 'PLACE_DETAILS', placeId: item.placeId, reqId: 'from' });
     } else if (item.coords) {
       setOriginCoords(item.coords);
       setIsFetchingOriginCoords(false);
@@ -274,7 +292,7 @@ function MainApp() {
     setDestinationSuggestions([]);
     if (item.placeId) {
       setDestinationCoords(null); // Clear while fetching — coords arrive via handlePlaceDetailsResult
-      webViewRef.current?.injectJavaScript(`requestPlaceDetails('${item.placeId}', 'to'); true;`);
+      sendToWebView({ type: 'PLACE_DETAILS', placeId: item.placeId, reqId: 'to' });
     } else if (item.coords) {
       setDestinationCoords(item.coords);
     }
