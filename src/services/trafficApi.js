@@ -102,7 +102,7 @@ const fetchOSRM = async (start, end) => {
 const fetchViaWaypoint = async (origin, waypoint, destination) => {
   const url = `http://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${waypoint.lon},${waypoint.lat};${destination.lon},${destination.lat}?overview=full&geometries=geojson&annotations=true&steps=true&continue_straight=false`;
   try {
-    const res = await fetch(url);
+    const res = await fetchWithRetry(url);
     const data = await res.json();
     if (data.code === 'Ok' && data.routes.length > 0) return data.routes[0];
     return null;
