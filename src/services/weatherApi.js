@@ -1,7 +1,18 @@
 export const getCurrentWeather = async (lat, lon) => {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,rain,weather_code,wind_speed_10m&forecast_days=1`;
-    const response = await fetch(url);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,rain,weather_code,wind_speed_10m,is_day&forecast_days=1`;
+
+    // Abort after 5 s so a slow weather response never blocks the route search
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    let response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
     const data = await response.json();
     
     if (!data || !data.current) {
@@ -21,3 +32,4 @@ export const getCurrentWeather = async (lat, lon) => {
     return null;
   }
 };
+

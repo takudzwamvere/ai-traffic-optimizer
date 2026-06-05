@@ -291,8 +291,11 @@ export function generateTrafficNarrative(bestRoute, departureMins, weather) {
   const wPhrase = weatherPhrase(weather, departureMins, seed + 6);
   sentences.push(wPhrase);
 
-  // 3b. RAIN OUTLOOK — warn of possible light showers for departures 45+ min away
-  if (departureMins >= 45) {
+  // 3b. RAIN OUTLOOK — warn of possible light showers for departures 45+ min away,
+  //     but only when current conditions suggest it is plausible (overcast or existing
+  //     precipitation). Never warn on a clear sunny day.
+  const cloudyOrRainy = weather && (weather.code >= 1);
+  if (departureMins >= 45 && cloudyOrRainy) {
     sentences.push(pick(RAIN_OUTLOOK_SOON, seed + 11));
   }
 
