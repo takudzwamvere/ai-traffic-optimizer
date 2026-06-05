@@ -18,6 +18,7 @@
 
 import { getTimeTrafficFactor, getTransitionMultiplier } from './trafficEngine';
 import { COLORS } from '../constants/colors';
+import { BUCKET_NOW_MAX, BUCKET_15_MAX, BUCKET_30 } from '../constants/departureBuckets';
 
 // ─── PHRASE POOLS ────────────────────────────────────────────────────────────
 // Multiple variants for each context so summaries never sound identical.
@@ -209,8 +210,8 @@ function weatherPhrase(weather, departureMins, seed) {
  */
 export function detectTrend(bestRoute, departureMins) {
   const nowColor = bestRoute?.predictions?.[0]?.color;
-  const futureColor = departureMins > 7
-    ? (departureMins > 22 ? bestRoute?.predictions?.[30]?.color : bestRoute?.predictions?.[15]?.color)
+  const futureColor = departureMins > BUCKET_NOW_MAX
+    ? (departureMins > BUCKET_15_MAX ? bestRoute?.predictions?.[BUCKET_30]?.color : bestRoute?.predictions?.[15]?.color)
     : nowColor;
 
   const nowRank = colorRank(nowColor);
@@ -244,9 +245,9 @@ export function generateTrafficNarrative(bestRoute, departureMins, weather) {
   const nowTransition = getTransitionMultiplier(now);
 
   const nowColor = bestRoute.predictions?.[0]?.color ?? COLORS.primary;
-  const futureColor = (departureMins <= 7)
+  const futureColor = (departureMins <= BUCKET_NOW_MAX)
     ? nowColor
-    : (departureMins <= 22 ? bestRoute.predictions?.[15]?.color : bestRoute.predictions?.[30]?.color)
+    : (departureMins <= BUCKET_15_MAX ? bestRoute.predictions?.[15]?.color : bestRoute.predictions?.[BUCKET_30]?.color)
     ?? nowColor;
 
   const trend = detectTrend(bestRoute, departureMins);

@@ -26,6 +26,7 @@ import { processAndRankRoutes } from './src/utils/routeHelpers';
 import { getCurrentWeather } from './src/services/weatherApi';
 import { saveSearch, getSearchHistory, getProfile } from './src/services/dataService';
 import { initMLEngine } from './src/services/mlOptimization';
+import { BUCKET_NOW_MAX, BUCKET_15_MAX, BUCKET_30 } from './src/constants/departureBuckets';
 
 
 const LOCATIONS = locationData;
@@ -480,9 +481,9 @@ function MainApp() {
 
     // Build segmented GeoJSON — use the departure offset bucket
     let segments;
-    if (offsetMins <= 7) segments = route.predictions?.[0]?.segments;
-    else if (offsetMins <= 22) segments = route.predictions?.[15]?.segments;
-    else segments = route.predictions?.[30]?.segments;
+    if (offsetMins <= BUCKET_NOW_MAX) segments = route.predictions?.[0]?.segments;
+    else if (offsetMins <= BUCKET_15_MAX) segments = route.predictions?.[15]?.segments;
+    else segments = route.predictions?.[BUCKET_30]?.segments;
 
     const geoJson = {
       type: 'Feature',

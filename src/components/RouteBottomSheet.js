@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-nati
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { useTheme } from '../context/ThemeContext';
+import { BUCKET_NOW_MAX, BUCKET_15_MAX } from '../constants/departureBuckets';
 import DeparturePlanner from './DeparturePlanner';
 import TrafficForecastSummary from './TrafficForecastSummary';
 import TrafficTrendIndicator from './TrafficTrendIndicator';
@@ -31,8 +32,8 @@ export default function RouteBottomSheet({
   // Get prediction data for the current time tab (now vs departure)
   const getBestBucket = (route) => {
     if (!route.predictions) return { formattedDuration: route.formattedDuration };
-    if (departureMins <= 7)  return route.predictions[0];
-    if (departureMins <= 22) return route.predictions[15];
+    if (departureMins <= BUCKET_NOW_MAX)  return route.predictions[0];
+    if (departureMins <= BUCKET_15_MAX) return route.predictions[15];
     return route.predictions[30];
   };
 
