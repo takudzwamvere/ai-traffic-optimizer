@@ -96,7 +96,7 @@ export const saveSearch = async (userId, searchData) => {
       const existingJson = await AsyncStorage.getItem('@guest_history');
       const history = existingJson ? JSON.parse(existingJson) : [];
       const newSearch = {
-        id: Math.random().toString(),
+        id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
         user_id: userId,
         origin_name: searchData.originName || 'My Location',
         destination_name: searchData.destinationName,
