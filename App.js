@@ -25,6 +25,7 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { processAndRankRoutes } from './src/utils/routeHelpers';
 import { getCurrentWeather } from './src/services/weatherApi';
 import { saveSearch, getSearchHistory, getProfile } from './src/services/dataService';
+import { initMLEngine } from './src/services/mlOptimization';
 
 
 const LOCATIONS = locationData;
@@ -102,6 +103,13 @@ function MainApp() {
   // Flags to prevent autocomplete from re-firing after the user selects a suggestion
   const skipOriginAutocomplete = useRef(false);
   const skipDestAutocomplete = useRef(false);
+
+  // ==========================================
+  // Initialise ML engine on mount (loads learned corridor weights)
+  // ==========================================
+  useEffect(() => {
+    initMLEngine().catch(e => console.warn('[ML] Failed to initialise:', e));
+  }, []);
 
   // ==========================================
   // Load search history from Supabase on mount
