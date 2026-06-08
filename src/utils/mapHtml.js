@@ -29,6 +29,14 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     var geocoder;
     var placesService;
 
+    // Glowing polyline heatmap configuration
+    var GLOW_OUTER_OPACITY = 0.15;
+    var GLOW_MID_OPACITY = 0.35;
+    var GLOW_CORE_OPACITY = 1.0;
+    var GLOW_OUTER_WEIGHT = 16;
+    var GLOW_MID_WEIGHT = 10;
+    var GLOW_CORE_WEIGHT = 5;
+
     function initMap() {
       var initLat = ${defaultCoords?.lat ?? -17.8292};
       var initLng = ${defaultCoords?.lon ?? 31.0522};
