@@ -5,5 +5,10 @@ export const COLORS = {
   text: '#333333',
   grayLight: '#F5F5F5',
   grayMedium: '#E0E0E0',
-  border: '#DDDDDD'
+  border: '#DDDDDD',
+  
+  // Neon Glow Colors for Map Layer
+  glowGreen: '#34A853',
+  glowYellow: '#FBBC04',
+  glowRed: '#EA4335'
 };
