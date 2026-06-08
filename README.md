@@ -6,7 +6,9 @@ Unlike standard navigation apps, this application uses a custom **Traffic Predic
 
 ## ✨ Features
 
-- **Live GPS Tracking**: Real-time location tracking using `expo-location`.
+- **Glowing Polyline Heatmap**: Renders route options using a multi-layered neon glow effect (outer wide halo, middle soft light, and fine core line) for premium visual aesthetics.
+- **Route Calibration & Overrides**: Allows fine-grained, route-by-route travel time overrides (accessible in the Profile tab) to fix default routing discrepancies one by one.
+- **Pulsing User Location**: Real-time location tracking featuring a custom glowing/pulsing user position marker on the map.
 - **Smart Routing Options**: Always presents 3 customized route options: BEST, ALT, and SLOW.
 - **Traffic Prediction Engine**: Adjusts ETAs intelligently based on time of day, road classification, and weather.
 - **Future Predictions**: Previews traffic and travel time for +15 and +30 minutes into the future.
