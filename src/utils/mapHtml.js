@@ -270,12 +270,24 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
             }
           }
 
+          var polyOuter = new google.maps.Polyline({
+            path: path,
+            geodesic: true,
+            strokeColor: color,
+            strokeOpacity: GLOW_OUTER_OPACITY,
+            strokeWeight: GLOW_OUTER_WEIGHT,
+            zIndex: 1
+          });
+          polyOuter.setMap(map);
+          routePolylines.push(polyOuter);
+
           var poly = new google.maps.Polyline({
             path: path,
             geodesic: true,
             strokeColor: color,
             strokeOpacity: 0.9,
-            strokeWeight: 6
+            strokeWeight: 6,
+            zIndex: 3
           });
           poly.setMap(map);
           routePolylines.push(poly);
