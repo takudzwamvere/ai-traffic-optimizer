@@ -310,15 +310,41 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
           bounds.extend(p);
           return p;
         });
-        var fallbackPoly = new google.maps.Polyline({
+
+        var fbColor = routeColor || '#4CAF50';
+
+        var fbPolyOuter = new google.maps.Polyline({
           path: fallbackPath,
           geodesic: true,
-          strokeColor: routeColor || '#4CAF50',
-          strokeOpacity: 0.85,
-          strokeWeight: 6
+          strokeColor: fbColor,
+          strokeOpacity: GLOW_OUTER_OPACITY,
+          strokeWeight: GLOW_OUTER_WEIGHT,
+          zIndex: 1
         });
-        fallbackPoly.setMap(map);
-        routePolylines.push(fallbackPoly);
+        fbPolyOuter.setMap(map);
+        routePolylines.push(fbPolyOuter);
+
+        var fbPolyMid = new google.maps.Polyline({
+          path: fallbackPath,
+          geodesic: true,
+          strokeColor: fbColor,
+          strokeOpacity: GLOW_MID_OPACITY,
+          strokeWeight: GLOW_MID_WEIGHT,
+          zIndex: 2
+        });
+        fbPolyMid.setMap(map);
+        routePolylines.push(fbPolyMid);
+
+        var fbPolyCore = new google.maps.Polyline({
+          path: fallbackPath,
+          geodesic: true,
+          strokeColor: fbColor,
+          strokeOpacity: GLOW_CORE_OPACITY,
+          strokeWeight: GLOW_CORE_WEIGHT,
+          zIndex: 3
+        });
+        fbPolyCore.setMap(map);
+        routePolylines.push(fbPolyCore);
       }
 
       // Also extend bounds with destination
