@@ -29,6 +29,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     var map;
     var routePolylines = [];
     var userMarker;
+    var userMarkerGlow;
     var endMarker;
     var directionsService;
     var autocompleteService;
@@ -97,7 +98,22 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       var pos = { lat: lat, lng: lon };
       if (userMarker) {
         userMarker.setPosition(pos);
+        if (userMarkerGlow) userMarkerGlow.setPosition(pos);
       } else {
+        // Glowing halo layer underneath
+        userMarkerGlow = new google.maps.Marker({
+          position: pos,
+          map: map,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 18,
+            fillColor: '#007AFF',
+            fillOpacity: 0.2,
+            strokeWeight: 0
+          },
+          zIndex: 998
+        });
+
         userMarker = new google.maps.Marker({
           position: pos,
           map: map,
