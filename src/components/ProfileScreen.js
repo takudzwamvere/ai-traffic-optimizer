@@ -5,6 +5,7 @@ import { COLORS } from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
 import { getProfile, getSearchHistory, getUserStats } from '../services/dataService';
 import EditProfileScreen from './EditProfileScreen';
+import RouteCalibrationScreen from './RouteCalibrationScreen';
 import { useTheme } from '../context/ThemeContext';
 
 export default function ProfileScreen({ visible, onClose }) {
@@ -14,6 +15,7 @@ export default function ProfileScreen({ visible, onClose }) {
   const [stats, setStats] = useState({ totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 });
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isCalibrationVisible, setIsCalibrationVisible] = useState(false);
   const { theme } = useTheme();
   const c = theme.colors;
 
@@ -149,6 +151,25 @@ export default function ProfileScreen({ visible, onClose }) {
               })()}
             </View>
 
+            {/* SETTINGS / CALIBRATION */}
+            <Text style={[styles.sectionTitle, { color: c.text }]}>Settings</Text>
+            <View style={[styles.settingsCard, { backgroundColor: c.surface }]}>
+              <TouchableOpacity
+                style={styles.settingsItem}
+                onPress={() => setIsCalibrationVisible(true)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.settingsIcon, { backgroundColor: c.primaryLight }]}>
+                  <Feather name="sliders" size={18} color={c.primary} />
+                </View>
+                <View style={styles.settingsDetails}>
+                  <Text style={[styles.settingsTitle, { color: c.text }]}>Route Calibration</Text>
+                  <Text style={[styles.settingsSubtitle, { color: c.textSub }]}>Customize travel times one by one</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={c.textMuted} style={{ marginRight: 4 }} />
+              </TouchableOpacity>
+            </View>
+
             {/* LOGOUT */}
             <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: theme.dark ? '#3D1A1A' : '#FFF5F5' }]} onPress={handleSignOut} activeOpacity={0.8}>
               <Feather name="log-out" size={18} color={c.danger} />
@@ -168,6 +189,14 @@ export default function ProfileScreen({ visible, onClose }) {
           loadData(); // Refresh on close
         }} 
         profile={profile} 
+      />
+
+      {/* ROUTE CALIBRATION MODAL */}
+      <RouteCalibrationScreen
+        visible={isCalibrationVisible}
+        onClose={() => {
+          setIsCalibrationVisible(false);
+        }}
       />
     </Modal>
   );
@@ -387,5 +416,39 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
     fontSize: 16,
     fontWeight: '700',
+  },
+  settingsCard: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  settingsItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  settingsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  settingsDetails: {
+    flex: 1,
+  },
+  settingsTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  settingsSubtitle: {
+    fontSize: 12,
   },
 });
