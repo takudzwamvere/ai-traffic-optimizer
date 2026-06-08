@@ -14,7 +14,13 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background-color: #000; }
-    #map { height: 100vh; width: 100vw; display: block; }
+    #map {
+      height: 100vh;
+      width: 100vw;
+      display: block;
+      transition: opacity 0.4s ease-in-out;
+      box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.85);
+    }
   </style>
 </head>
 <body>
