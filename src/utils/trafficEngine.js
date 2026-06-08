@@ -6,6 +6,9 @@
  * 2. Time of Day (Hourly curves)
  * 3. Day of Week (Weekend vs Weekday)
  * 4. Weather Conditions (Rain/Wind impact)
+ * 
+ * Output speeds are visualised dynamically via the multi-layered glowing
+ * route polyline heatmap on the client map interface.
  */
 
 import { COLORS } from '../constants/colors.js';
