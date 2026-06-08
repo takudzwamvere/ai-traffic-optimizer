@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   sheetHandle: { width: 50, height: 5, backgroundColor: COLORS.grayMedium, borderRadius: 10, alignSelf: 'center', marginTop: 12, marginBottom: 10 },
 
   mainCard: { paddingHorizontal: 20 },
-  dotSeparator: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#999' },
+  dotSeparator: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#999', marginHorizontal: 6 },
   cardTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
   cardReason: { fontSize: 13, color: '#666', fontWeight: '500' },
   routeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
