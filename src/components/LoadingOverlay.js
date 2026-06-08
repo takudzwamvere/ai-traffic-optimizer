@@ -21,6 +21,33 @@ const ShimmerBar = ({ width, delay = 0 }) => {
   );
 };
 
+const Spinner = () => {
+  const rotation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(rotation, {
+        toValue: 1,
+        duration: 1200,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const spin = rotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg']
+  });
+
+  return (
+    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+      <Feather name="loader" size={18} color="#007AFF" />
+    </Animated.View>
+  );
+};
+
 export default function LoadingOverlay({ visible }) {
   if (!visible) return null;
 
@@ -28,7 +55,7 @@ export default function LoadingOverlay({ visible }) {
     <View style={styles.container}>
       <View style={styles.card}>
         <View style={styles.header}>
-          <Feather name="loader" size={18} color="#007AFF" />
+          <Spinner />
           <Text style={styles.headerText}>Finding best routes...</Text>
         </View>
 
