@@ -73,13 +73,19 @@ export const processRouteSegments = (route, weatherData, timeOffset = 0) => {
 };
 
 // --- Route Score (lower = better) ---
-export const calculateRouteScore = (route, weatherData) => {
+export const calculateRouteScore = (route, weatherData, corridorRoute = null, corridor = null) => {
   const result = processRouteSegments(route, weatherData, 0);
   
   // Use the actual Google Directions duration as the baseline so the score
   // is meaningful for both short city trips and long inter-city routes.
   // Then scale the AI traffic delay proportionally (per-km rate) on top.
-  const baseDurationSeconds = route.duration || (route.distance * (420 / 6600));
+  let baseDurationSeconds = route.duration || (route.distance * (420 / 6600));
+  if (corridorRoute && corridor) {
+    const isPeak = isInPeakHours(corridor);
+    const baseMins = isPeak ? (corridorRoute.peakMinutes || corridorRoute.typicalMinutes) : corridorRoute.typicalMinutes;
+    baseDurationSeconds = baseMins * 60;
+  }
+  
   const delayRatePerMeter = result.totalDelay / Math.max(route.distance, 1);
   const scaledDelay = delayRatePerMeter * route.distance;
   const predictedDuration = baseDurationSeconds + scaledDelay;
@@ -125,32 +131,39 @@ const deduplicateRoadConditions = (conditions) => {
 import { applyMLScoring } from '../services/mlOptimization.js';
 
 export const processAndRankRoutes = (rawRoutes, weatherData, originName, destName) => {
-  // 1. Initial Scoring
-  let scored = rawRoutes.map(route => ({
-    route,
-    score: calculateRouteScore(route, weatherData),
-  }));
-
-  // 2. Find matching corridor for name labeling BEFORE applying ML
   const corridor = findCorridor(originName, destName);
   const isPeak = corridor ? isInPeakHours(corridor) : false;
 
-  // 3. Apply ML Adjustments & Confidence Levels
-  scored = scored.map(({ route, score }) => {
+  // 1. Initial Scoring (incorporating corridor calibration)
+  let scored = rawRoutes.map(route => {
     let corridorRouteName = null;
+    let corridorRoute = null;
     if (corridor) {
       const roadNames = extractRoadNames(route);
       const match = matchRouteToCorridorRoute(roadNames, corridor.routes);
       if (match) {
         corridorRouteName = match.name;
+        corridorRoute = match;
       }
     }
+    const baseScore = calculateRouteScore(route, weatherData, corridorRoute, corridor);
+    return {
+      route,
+      score: baseScore,
+      corridorRouteName,
+      corridorRoute
+    };
+  });
+
+  // 3. Apply ML Adjustments & Confidence Levels
+  scored = scored.map(({ route, score, corridorRouteName, corridorRoute }) => {
     const mlAnalysis = applyMLScoring(route, score, corridorRouteName);
     return {
       route,
       score: mlAnalysis.score,
       confidenceLevel: mlAnalysis.confidenceLevel, // E.g. "85%"
-      corridorRouteName
+      corridorRouteName,
+      corridorRoute
     };
   });
 
@@ -164,7 +177,7 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
   const routeCount = Math.min(scored.length, 3);
   const isSingleRoute = routeCount === 1;
 
-  const processedRoutes = scored.slice(0, routeCount).map(({ route, score, confidenceLevel, corridorRouteName }, index) => {
+  const processedRoutes = scored.slice(0, routeCount).map(({ route, score, confidenceLevel, corridorRouteName, corridorRoute }, index) => {
     const predictions = {};
     let routeRoadConditions = [];
 
@@ -174,7 +187,13 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
       // Use Google's actual route duration as the base so ETAs are correct
       // for both short city trips and long inter-city routes.
       // The AI traffic delay is then applied as a proportional per-km adjustment.
-      const baseDurationSeconds = route.duration || (route.distance * (420 / 6600));
+      let baseDurationSeconds = route.duration || (route.distance * (420 / 6600));
+      if (corridorRoute) {
+        const offsetDate = new Date(Date.now() + offset * 60 * 1000);
+        const isPeakOffset = isInPeakHours(corridor, offsetDate);
+        const baseMins = isPeakOffset ? (corridorRoute.peakMinutes || corridorRoute.typicalMinutes) : corridorRoute.typicalMinutes;
+        baseDurationSeconds = baseMins * 60;
+      }
       const delayRatePerMeter = result.totalDelay / Math.max(route.distance, 1);
       const scaledDelay = delayRatePerMeter * route.distance;
       const duration = baseDurationSeconds + scaledDelay;
