@@ -1,9 +1,14 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 /**
  * Known Bulawayo Route Corridors
  * 
  * Real-world route data for common origin→destination pairs.
  * Used to label routes with meaningful names and calibrate travel time predictions.
  */
+
+const CALIBRATION_STORAGE_KEY = '@route_calibrations';
+let customCorridors = [];
 
 // Canonical route corridors with real-world data
 export const KNOWN_CORRIDORS = [
@@ -44,6 +49,73 @@ export const KNOWN_CORRIDORS = [
 ];
 
 /**
+ * Load custom corridor overrides from AsyncStorage
+ */
+export const loadCustomCorridors = async () => {
+  try {
+    const data = await AsyncStorage.getItem(CALIBRATION_STORAGE_KEY);
+    if (data) {
+      customCorridors = JSON.parse(data);
+    } else {
+      customCorridors = [];
+    }
+  } catch (e) {
+    console.warn('Failed to load custom corridors:', e);
+    customCorridors = [];
+  }
+};
+
+/**
+ * Save custom corridor overrides to AsyncStorage
+ */
+export const saveCustomCorridors = async (updated) => {
+  try {
+    customCorridors = updated;
+    await AsyncStorage.setItem(CALIBRATION_STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Failed to save custom corridors:', e);
+  }
+};
+
+/**
+ * Merge default corridors with user-customized overrides
+ */
+export const getActiveCorridors = () => {
+  if (!customCorridors || customCorridors.length === 0) {
+    return KNOWN_CORRIDORS;
+  }
+
+  // Deep clone default corridors to avoid mutating
+  const merged = JSON.parse(JSON.stringify(KNOWN_CORRIDORS));
+
+  customCorridors.forEach(custom => {
+    const matchIdx = merged.findIndex(c => 
+      c.origin.toLowerCase() === custom.origin.toLowerCase() &&
+      c.destination.toLowerCase() === custom.destination.toLowerCase()
+    );
+
+    if (matchIdx !== -1) {
+      // Merge routes one by one
+      custom.routes.forEach(cr => {
+        const routeIdx = merged[matchIdx].routes.findIndex(r => r.name === cr.name);
+        if (routeIdx !== -1) {
+          merged[matchIdx].routes[routeIdx].typicalMinutes = cr.typicalMinutes;
+          merged[matchIdx].routes[routeIdx].peakMinutes = cr.peakMinutes;
+        } else {
+          merged[matchIdx].routes.push(cr);
+        }
+      });
+      // Merge other properties if needed
+      if (custom.peakHours) merged[matchIdx].peakHours = custom.peakHours;
+    } else {
+      merged.push(custom);
+    }
+  });
+
+  return merged;
+};
+
+/**
  * Try to match an origin+destination pair to a known corridor.
  * Returns the corridor object or null.
  */
@@ -52,7 +124,8 @@ export const findCorridor = (originName, destName) => {
   const oLower = originName.toLowerCase();
   const dLower = destName.toLowerCase();
 
-  return KNOWN_CORRIDORS.find(c => {
+  const active = getActiveCorridors();
+  return active.find(c => {
     const oMatch = oLower.includes(c.origin.toLowerCase()) || c.origin.toLowerCase().includes(oLower);
     const dMatch = dLower.includes(c.destination.toLowerCase()) || c.destination.toLowerCase().includes(dLower);
     // Also check reverse direction
