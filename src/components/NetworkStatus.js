@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
+import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 
 export default function NetworkStatus(props) {
@@ -36,7 +37,8 @@ export default function NetworkStatus(props) {
 
   return (
     <Animated.View style={[styles.container, { transform: [{ translateY: slideAnim }] }, props.style]}>
-      <Text style={styles.text}>No Internet Connection. Route calculation may be limited.</Text>
+      <Feather name="wifi-off" size={15} color="white" style={{ marginRight: 8 }} />
+      <Text style={styles.text}>No Connection. Off-line backups active.</Text>
     </Animated.View>
   );
 }
@@ -51,7 +53,9 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     zIndex: 100,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
