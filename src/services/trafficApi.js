@@ -130,7 +130,9 @@ export const fetchAlternativeRoutes = async (origin, destination) => {
   return uniqueRoutes.sort((a, b) => a.duration - b.duration);
 };
 
-// --- Main Route Function ---
+// --- Main Route Fetch and Processing Function ---
+// Fetches routes from OSRM server, checks weather conditions, and processes
+// predictions through the calibration overrides and ML ranking engines.
 export const getRoute = async (start, end, originName, destName) => {
   try {
     const [rawRoutes, weatherData] = await Promise.all([
@@ -139,6 +141,7 @@ export const getRoute = async (start, end, originName, destName) => {
     ]);
 
     if (rawRoutes.length > 0) {
+      // Process routes: applies matched corridor travel time overrides and ML scoring
       const { routes: processedRoutes, roadConditions, singleRouteMessage } = processAndRankRoutes(rawRoutes, weatherData, originName, destName);
       return { routes: processedRoutes, weather: weatherData, roadConditions, singleRouteMessage };
     }
