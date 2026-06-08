@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { useTheme } from '../context/ThemeContext';
 
 const SEVERITY_CONFIG = {
   heavy:    { label: 'Congested',  color: COLORS.danger,  icon: 'alert-triangle', bg: '#FFF0F0' },
@@ -35,6 +36,9 @@ const RoadRow = ({ road }) => {
 };
 
 export default function RoadConditionsPanel({ roadConditions = [], visible = false }) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+
   if (!visible || roadConditions.length === 0) return null;
 
   const heavy = roadConditions.filter(r => r.severity === 'heavy');
@@ -44,8 +48,8 @@ export default function RoadConditionsPanel({ roadConditions = [], visible = fal
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Feather name="activity" size={16} color={COLORS.text} />
-        <Text style={styles.headerText}>
+        <Feather name="activity" size={16} color={c.text} />
+        <Text style={[styles.headerText, { color: c.text }]}>
           {roadConditions.length} Roads Monitored
         </Text>
       </View>
