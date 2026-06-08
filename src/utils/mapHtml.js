@@ -296,8 +296,8 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
             path: path,
             geodesic: true,
             strokeColor: color,
-            strokeOpacity: 0.9,
-            strokeWeight: 6,
+            strokeOpacity: GLOW_CORE_OPACITY,
+            strokeWeight: GLOW_CORE_WEIGHT,
             zIndex: 3
           });
           poly.setMap(map);
