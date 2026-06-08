@@ -281,6 +281,17 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
           polyOuter.setMap(map);
           routePolylines.push(polyOuter);
 
+          var polyMid = new google.maps.Polyline({
+            path: path,
+            geodesic: true,
+            strokeColor: color,
+            strokeOpacity: GLOW_MID_OPACITY,
+            strokeWeight: GLOW_MID_WEIGHT,
+            zIndex: 2
+          });
+          polyMid.setMap(map);
+          routePolylines.push(polyMid);
+
           var poly = new google.maps.Polyline({
             path: path,
             geodesic: true,
