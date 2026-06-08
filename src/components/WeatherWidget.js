@@ -28,7 +28,7 @@ export default function WeatherWidget({ weather, topOffset = 110 }) {
     label = 'Drizzle';
     color = '#87CEEB';
   } else if (code >= 45) {
-    iconName = 'menu'; // Fog representation
+    iconName = 'wind'; // Wind/Fog representation
     label = 'Foggy';
     color = '#B0C4DE';
   } else if (code >= 1) {
@@ -41,7 +41,7 @@ export default function WeatherWidget({ weather, topOffset = 110 }) {
   const c = theme.colors;
 
   return (
-    <View style={[styles.container, { top: topOffset, backgroundColor: c.surface }]}>
+    <View style={[styles.container, { top: topOffset, backgroundColor: c.surface, borderColor: c.border }]}>
       <Feather name={iconName} size={18} color={color} style={{ marginRight: 6 }} />
       <Text style={[styles.text, { color: c.text }]}>{label} {Math.round(temp)}°C</Text>
     </View>
@@ -59,6 +59,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
     elevation: 4,
     shadowColor: '#000',
     shadowOpacity: 0.1,
