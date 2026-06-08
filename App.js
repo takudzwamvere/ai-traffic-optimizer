@@ -26,6 +26,7 @@ import { processAndRankRoutes } from './src/utils/routeHelpers';
 import { getCurrentWeather } from './src/services/weatherApi';
 import { saveSearch, getSearchHistory, getProfile } from './src/services/dataService';
 import { initMLEngine } from './src/services/mlOptimization';
+import { loadCustomCorridors } from './src/data/corridors';
 import { BUCKET_NOW_MAX, BUCKET_15_MAX, BUCKET_30 } from './src/constants/departureBuckets';
 
 
@@ -120,10 +121,11 @@ function MainApp() {
   }, []);
 
   // ==========================================
-  // Initialise ML engine on mount (loads learned corridor weights)
+  // Initialise ML engine and load route calibrations on mount
   // ==========================================
   useEffect(() => {
     initMLEngine().catch(e => console.warn('[ML] Failed to initialise:', e));
+    loadCustomCorridors().catch(e => console.warn('[Calibration] Failed to load custom corridors:', e));
   }, []);
 
   // ==========================================
