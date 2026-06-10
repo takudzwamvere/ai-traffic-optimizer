@@ -131,6 +131,13 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
         maxZoom: 19
       });
 
+      // Initialize Map with "Google Streets" as default
+      map = L.map('map', {
+        zoomControl: false,
+        renderer: L.canvas(),
+        layers: [googleStreets] // Default layer
+      }).setView([initLat, initLng], 13);
+
       directionsService = new google.maps.DirectionsService();
       autocompleteService = new google.maps.places.AutocompleteService();
       geocoder = new google.maps.Geocoder();
