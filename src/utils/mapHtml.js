@@ -191,7 +191,32 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     function applyMapStyle(stylesJson) {
       if (!map) return;
       try {
-        map.setOptions({ styles: JSON.parse(stylesJson) });
+        var styles = JSON.parse(stylesJson);
+        var isDark = false;
+        if (Array.isArray(styles)) {
+          styles.forEach(function(s) {
+            if (s.elementType === 'geometry' && s.stylers) {
+              s.stylers.forEach(function(st) {
+                if (st.color && (st.color === '#242f3e' || st.color === '#2e3440' || st.color === '#282a36' || st.color === '#282828' || st.color === '#002b36' || st.color === '#000000')) {
+                  isDark = true;
+                }
+              });
+            }
+          });
+        }
+
+        // Remove all layers first, then add the appropriate one
+        if (map.hasLayer(googleStreets)) map.removeLayer(googleStreets);
+        if (map.hasLayer(googleHybrid)) map.removeLayer(googleHybrid);
+        if (map.hasLayer(darkMatter)) map.removeLayer(darkMatter);
+        if (map.hasLayer(voyager)) map.removeLayer(voyager);
+        if (map.hasLayer(esriSat)) map.removeLayer(esriSat);
+
+        if (isDark) {
+          darkMatter.addTo(map);
+        } else {
+          googleStreets.addTo(map);
+        }
       } catch(e) {}
     }
 
