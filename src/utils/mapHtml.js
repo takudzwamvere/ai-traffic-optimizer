@@ -82,6 +82,13 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     var placesService;
     var googleStreets, googleHybrid, darkMatter, voyager, esriSat;
 
+    var flagIcon = L.divIcon({
+      className: 'custom-flag-icon',
+      html: '<div style="font-size: 36px; filter: drop-shadow(1px 2px 3px black);">🏁</div>',
+      iconSize: [40, 40],
+      iconAnchor: [10, 35]
+    });
+
     // Glowing polyline heatmap configuration
     var GLOW_OUTER_OPACITY = 0.15;
     var GLOW_MID_OPACITY = 0.35;
