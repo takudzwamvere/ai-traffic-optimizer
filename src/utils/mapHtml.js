@@ -230,7 +230,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       map.setView([lat, lon], 16);
     }
 
-    // Google Places Autocomplete
+    // Google Places Autocomplete - kept for rich Zimbabwe geocoding predictions
     function requestAutocompleteSuggestions(query, reqId) {
       if (!query || query.length < 2) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'AUTOCOMPLETE_RESULT', reqId: reqId, results: [] }));
