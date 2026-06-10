@@ -150,6 +150,17 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
 
       L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
+      // Monkey-patch map.panTo to support Google-style { lat, lng } or { lat, lon }
+      var originalPanTo = map.panTo;
+      map.panTo = function(latLng, options) {
+        if (latLng && typeof latLng === 'object' && !Array.isArray(latLng)) {
+          var lat = latLng.lat;
+          var lng = latLng.lng !== undefined ? latLng.lng : latLng.lon;
+          return originalPanTo.call(this, [lat, lng], options);
+        }
+        return originalPanTo.call(this, latLng, options);
+      };
+
       directionsService = new google.maps.DirectionsService();
       autocompleteService = new google.maps.places.AutocompleteService();
       geocoder = new google.maps.Geocoder();
