@@ -197,38 +197,29 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     // Called from React Native to update the blue user-location dot
     function setUserLocation(lat, lon) {
       if (!map) return;
-      var pos = { lat: lat, lng: lon };
+      var pos = [lat, lon];
       if (userMarker) {
-        userMarker.setPosition(pos);
-        if (userMarkerGlow) userMarkerGlow.setPosition(pos);
+        userMarker.setLatLng(pos);
+        if (userMarkerGlow) userMarkerGlow.setLatLng(pos);
       } else {
         // Glowing halo layer underneath
-        userMarkerGlow = new google.maps.Marker({
-          position: pos,
-          map: map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 18,
-            fillColor: '#007AFF',
-            fillOpacity: 0.2,
-            strokeWeight: 0
-          },
-          zIndex: 998
-        });
+        userMarkerGlow = L.circleMarker(pos, {
+          radius: 18,
+          fillColor: '#007AFF',
+          fillOpacity: 0.2,
+          stroke: false,
+          interactive: false
+        }).addTo(map);
 
-        userMarker = new google.maps.Marker({
-          position: pos,
-          map: map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 9,
-            fillColor: '#007AFF',
-            fillOpacity: 1,
-            strokeWeight: 3,
-            strokeColor: '#ffffff'
-          },
-          zIndex: 999
-        });
+        userMarker = L.circleMarker(pos, {
+          radius: 9,
+          fillColor: '#007AFF',
+          fillOpacity: 1,
+          color: '#ffffff',
+          weight: 3,
+          opacity: 1,
+          interactive: false
+        }).addTo(map);
       }
     }
 
