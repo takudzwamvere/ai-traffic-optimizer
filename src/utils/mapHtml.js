@@ -167,9 +167,24 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       var dummyDiv = document.createElement('div');
       placesService = new google.maps.places.PlacesService(dummyDiv);
 
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_TILES_LOADED' }));
-      }
+      // --- MAP TILE LOADING DETECTION ---
+      // Listen for the first batch of tiles to finish loading, then post a message to React Native so the loading overlay is dismissed.
+      (function() {
+        var tileLoaded = false;
+        function onTilesReady() {
+          if (tileLoaded) return;
+          tileLoaded = true;
+          try {
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_TILES_LOADED' }));
+            }
+          } catch(e) {}
+        }
+        // Leaflet map fires 'load' when all tiles in current view have loaded
+        map.once('load', onTilesReady);
+        // Fallback: if 'load' never fires (e.g. offline/cached), trigger after 4s
+        setTimeout(onTilesReady, 4000);
+      })();
 
       // ── Safe message channel from React Native ──────────────────────────
       // React Native sends typed JSON messages via window.dispatchEvent so
