@@ -470,9 +470,9 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     }
 
     function clearRoute() {
-      routePolylines.forEach(function(p) { p.setMap(null); });
-      routePolylines = [];
-      if (endMarker) { endMarker.setMap(null); endMarker = null; }
+      routeLayers.forEach(function(l) { map.removeLayer(l); });
+      routeLayers = [];
+      if (endMarker) { map.removeLayer(endMarker); endMarker = null; }
     }
   </script>
   <script
