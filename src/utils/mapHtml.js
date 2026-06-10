@@ -15,7 +15,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background-color: #000; }
+    body { margin: 0; padding: 0; background-color: #000; }
     #map {
       height: 100vh;
       width: 100vw;
@@ -23,6 +23,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       transition: opacity 0.4s ease-in-out;
       box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.85);
     }
+    .leaflet-div-icon { background: transparent; border: none; }
   </style>
 </head>
 <body>
