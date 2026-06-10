@@ -138,6 +138,17 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
         layers: [googleStreets] // Default layer
       }).setView([initLat, initLng], 13);
 
+      // Layer Control
+      var baseMaps = {
+        "Google Streets": googleStreets,
+        "Google Hybrid": googleHybrid,
+        "Midnight Commander": darkMatter,
+        "Voyager": voyager,
+        "Esri Satellite": esriSat
+      };
+
+      L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+
       directionsService = new google.maps.DirectionsService();
       autocompleteService = new google.maps.places.AutocompleteService();
       geocoder = new google.maps.Geocoder();
