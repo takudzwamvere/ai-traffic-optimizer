@@ -113,6 +113,24 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
       });
 
+      // 3. CartoDB Dark Matter (Sleek Dark Mode)
+      darkMatter = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy;OpenStreetMap, &copy;CartoDB',
+        maxZoom: 20
+      });
+
+      // 4. CartoDB Voyager (Clean, Pastel, Navigation-friendly)
+      voyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy;OpenStreetMap, &copy;CartoDB',
+        maxZoom: 20
+      });
+
+      // 5. Esri World Imagery (High Quality Satellite)
+      esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri',
+        maxZoom: 19
+      });
+
       directionsService = new google.maps.DirectionsService();
       autocompleteService = new google.maps.places.AutocompleteService();
       geocoder = new google.maps.Geocoder();
