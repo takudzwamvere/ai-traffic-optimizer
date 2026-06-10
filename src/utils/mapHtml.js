@@ -72,7 +72,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
   <div id="map"></div>
   <script>
     var map;
-    var routePolylines = [];
+    var routeLayers = [];
     var userMarker;
     var userMarkerGlow;
     var endMarker;
@@ -80,6 +80,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     var autocompleteService;
     var geocoder;
     var placesService;
+    var googleStreets, googleHybrid, darkMatter, voyager, esriSat;
 
     // Glowing polyline heatmap configuration
     var GLOW_OUTER_OPACITY = 0.15;
