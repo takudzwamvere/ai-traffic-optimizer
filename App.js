@@ -530,9 +530,8 @@ function MainApp() {
 
   const handleLocateMe = () => {
     const script = `
-      if (typeof map !== 'undefined') {
-        map.panTo({ lat: ${gpsCoords.lat}, lng: ${gpsCoords.lon} });
-        map.setZoom(16);
+      if (typeof panToUserLocation === 'function') {
+        panToUserLocation(${gpsCoords.lat}, ${gpsCoords.lon});
       }
     `;
     webViewRef.current?.injectJavaScript(script);
