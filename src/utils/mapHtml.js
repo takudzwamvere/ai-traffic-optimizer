@@ -362,127 +362,37 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
 
       if (!map) return;
 
-      // Destination marker
-      endMarker = new google.maps.Marker({
-        position: { lat: destLat, lng: destLon },
-        map: map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: routeColor || '#EA4335',
-          fillOpacity: 1,
-          strokeWeight: 2,
-          strokeColor: '#ffffff'
-        },
-        zIndex: 100
-      });
+      // TODO: Place destination endMarker (Commit 21)
 
-      var bounds = new google.maps.LatLngBounds();
+      var latLngs = [];
 
       if (geoJson.properties && geoJson.properties.segments && geoJson.properties.segments.length > 0) {
-        geoJson.properties.segments.forEach(function(segment) {
-          var path = segment.coordinates.map(function(c) {
-            // Segments stored as [lat, lon] by routeHelpers
-            var p = { lat: c[0], lng: c[1] };
-            bounds.extend(p);
-            return p;
-          });
+        var segments = geoJson.properties.segments;
 
-          var color = '#34A853'; // Green default
-          if (segment.color) {
-            var lc = segment.color.toLowerCase();
-            if (lc === '#ffc107' || lc === '#fbbc04' || lc === '#fb8c00' || lc === 'yellow') {
-              color = '#FBBC04';
-            } else if (lc === '#f44336' || lc === '#ea4335' || lc === '#ff3b30' || lc === 'red') {
-              color = '#EA4335';
-            } else if (segment.color.startsWith('#')) {
-              color = segment.color;
-            }
-          }
-
-          var polyOuter = new google.maps.Polyline({
-            path: path,
-            geodesic: true,
-            strokeColor: color,
-            strokeOpacity: GLOW_OUTER_OPACITY,
-            strokeWeight: GLOW_OUTER_WEIGHT,
-            zIndex: 1
+        // Commit 17: Render outer lines first (shadow / outer glow)
+        segments.forEach(function(segment) {
+          var path = segment.coordinates;
+          path.forEach(function(c) {
+            latLngs.push([c[0], c[1]]);
           });
-          polyOuter.setMap(map);
-          routePolylines.push(polyOuter);
-
-          var polyMid = new google.maps.Polyline({
-            path: path,
-            geodesic: true,
-            strokeColor: color,
-            strokeOpacity: GLOW_MID_OPACITY,
-            strokeWeight: GLOW_MID_WEIGHT,
-            zIndex: 2
-          });
-          polyMid.setMap(map);
-          routePolylines.push(polyMid);
-
-          var poly = new google.maps.Polyline({
-            path: path,
-            geodesic: true,
-            strokeColor: color,
-            strokeOpacity: GLOW_CORE_OPACITY,
-            strokeWeight: GLOW_CORE_WEIGHT,
-            zIndex: 3
-          });
-          poly.setMap(map);
-          routePolylines.push(poly);
+          var color = getSegmentColor(segment.color);
+          var polyOuter = L.polyline(path, {
+            color: color,
+            opacity: GLOW_OUTER_OPACITY,
+            weight: GLOW_OUTER_WEIGHT,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(map);
+          routeLayers.push(polyOuter);
         });
+
+        // TODO: Commit 18: Render mid-glow lines
+        // TODO: Commit 19: Render core solid lines
       } else if (geoJson.geometry && geoJson.geometry.coordinates) {
-        // Fallback: draw the full route as a single color line
-        var fallbackPath = geoJson.geometry.coordinates.map(function(c) {
-          var p = { lat: c[1], lng: c[0] };
-          bounds.extend(p);
-          return p;
-        });
-
-        var fbColor = routeColor || '#4CAF50';
-
-        var fbPolyOuter = new google.maps.Polyline({
-          path: fallbackPath,
-          geodesic: true,
-          strokeColor: fbColor,
-          strokeOpacity: GLOW_OUTER_OPACITY,
-          strokeWeight: GLOW_OUTER_WEIGHT,
-          zIndex: 1
-        });
-        fbPolyOuter.setMap(map);
-        routePolylines.push(fbPolyOuter);
-
-        var fbPolyMid = new google.maps.Polyline({
-          path: fallbackPath,
-          geodesic: true,
-          strokeColor: fbColor,
-          strokeOpacity: GLOW_MID_OPACITY,
-          strokeWeight: GLOW_MID_WEIGHT,
-          zIndex: 2
-        });
-        fbPolyMid.setMap(map);
-        routePolylines.push(fbPolyMid);
-
-        var fbPolyCore = new google.maps.Polyline({
-          path: fallbackPath,
-          geodesic: true,
-          strokeColor: fbColor,
-          strokeOpacity: GLOW_CORE_OPACITY,
-          strokeWeight: GLOW_CORE_WEIGHT,
-          zIndex: 3
-        });
-        fbPolyCore.setMap(map);
-        routePolylines.push(fbPolyCore);
+        // TODO: Commit 20: Fallback single color route
       }
 
-      // Also extend bounds with destination
-      bounds.extend({ lat: destLat, lng: destLon });
-
-      if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, { top: 120, bottom: 120, left: 60, right: 60 });
-      }
+      // TODO: Commit 21: Extend bounds and fitBounds
     }
 
     function clearRoute() {
