@@ -101,15 +101,16 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       var initLat = ${defaultCoords?.lat ?? -17.8292};
       var initLng = ${defaultCoords?.lon ?? 31.0522};
 
-      map = new google.maps.Map(document.getElementById('map'), {
-        center: { lat: initLat, lng: initLng },
-        zoom: 13,
-        disableDefaultUI: true,
-        gestureHandling: 'greedy',
-        styles: [
-          { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-          { featureType: 'transit', stylers: [{ visibility: 'simplified' }] }
-        ]
+      // 1. Google Streets (The "Google-like" layer)
+      googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+      });
+
+      // 2. Google Hybrid (Satellite + Labels)
+      googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
       });
 
       directionsService = new google.maps.DirectionsService();
