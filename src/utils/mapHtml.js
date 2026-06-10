@@ -362,7 +362,8 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
 
       if (!map) return;
 
-      // TODO: Place destination endMarker (Commit 21)
+      // Destination marker
+      endMarker = L.marker([destLat, destLon], { icon: flagIcon }).addTo(map);
 
       var latLngs = [];
 
@@ -451,7 +452,12 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
         routeLayers.push(fbPolyCore);
       }
 
-      // TODO: Commit 21: Extend bounds and fitBounds
+      // Extend bounds with destination coordinate
+      latLngs.push([destLat, destLon]);
+
+      if (latLngs.length > 0) {
+        map.fitBounds(latLngs, { padding: [80, 80] });
+      }
     }
 
     function clearRoute() {
