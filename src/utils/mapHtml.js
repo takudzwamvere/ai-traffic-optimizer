@@ -24,6 +24,35 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.85);
     }
     .leaflet-div-icon { background: transparent; border: none; }
+
+    /* Custom Control Styling */
+    .leaflet-control-layers {
+      border: none !important;
+      border-radius: 12px !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 6px !important;
+    }
+    .leaflet-control-layers-toggle {
+      width: 44px !important;
+      height: 44px !important;
+    }
+    .leaflet-touch .leaflet-control-layers-toggle {
+      width: 44px;
+      height: 44px;
+    }
+    .leaflet-control-layers-list {
+      font-size: 14px;
+      padding: 5px;
+    }
+    .leaflet-control-layers-base label {
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+    }
+    .leaflet-control-layers-base input {
+      margin-right: 8px;
+    }
   </style>
 </head>
 <body>
