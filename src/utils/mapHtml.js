@@ -400,7 +400,19 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
           routeLayers.push(polyMid);
         });
 
-        // TODO: Commit 19: Render core solid lines
+        // Commit 19: Render core solid lines (solid center)
+        segments.forEach(function(segment) {
+          var path = segment.coordinates;
+          var color = getSegmentColor(segment.color);
+          var polyCore = L.polyline(path, {
+            color: color,
+            opacity: GLOW_CORE_OPACITY,
+            weight: GLOW_CORE_WEIGHT,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(map);
+          routeLayers.push(polyCore);
+        });
       } else if (geoJson.geometry && geoJson.geometry.coordinates) {
         // TODO: Commit 20: Fallback single color route
       }
