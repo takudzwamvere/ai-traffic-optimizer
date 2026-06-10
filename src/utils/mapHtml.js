@@ -386,7 +386,20 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
           routeLayers.push(polyOuter);
         });
 
-        // TODO: Commit 18: Render mid-glow lines
+        // Commit 18: Render mid-glow lines (medium glow)
+        segments.forEach(function(segment) {
+          var path = segment.coordinates;
+          var color = getSegmentColor(segment.color);
+          var polyMid = L.polyline(path, {
+            color: color,
+            opacity: GLOW_MID_OPACITY,
+            weight: GLOW_MID_WEIGHT,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(map);
+          routeLayers.push(polyMid);
+        });
+
         // TODO: Commit 19: Render core solid lines
       } else if (geoJson.geometry && geoJson.geometry.coordinates) {
         // TODO: Commit 20: Fallback single color route
