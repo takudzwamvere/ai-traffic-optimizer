@@ -262,6 +262,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       });
     }
 
+    // Google Places Details - resolves selected Autocomplete place IDs into lat/lon coords
     function requestPlaceDetails(placeId, reqId) {
       if (!placesService) return;
       placesService.getDetails({ placeId: placeId, fields: ['geometry'] }, function(place, status) {
