@@ -279,7 +279,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       });
     }
 
-    // Request routes via Google Directions Service (returns data to React Native AI engine)
+    // Google Directions API - fetches routing options and parses them to match OSRM segment layout
     function requestGoogleRoute(origLat, origLon, destLat, destLon) {
       if (!directionsService) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ROUTE_RESULT', routes: [], error: 'NOT_READY' }));
