@@ -53,6 +53,19 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     .leaflet-control-layers-base input {
       margin-right: 8px;
     }
+
+    /* Position the control below the React Native Search Bar (approx 180px) */
+    .leaflet-top {
+      top: 180px !important;
+    }
+    /* Make the toggle button larger and more "button-like" for mobile */
+    .leaflet-control-layers-toggle {
+      width: 48px !important;
+      height: 48px !important;
+      background-size: 30px !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+      border-radius: 50% !important; /* Circle shape like Google Maps FAB */
+    }
   </style>
 </head>
 <body>
