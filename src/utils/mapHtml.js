@@ -340,6 +340,22 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       });
     }
 
+    // Helper to resolve segment color to hex code
+    function getSegmentColor(color) {
+      var c = '#34A853'; // Default Green (flowing)
+      if (color) {
+        var lc = color.toLowerCase();
+        if (lc === '#ffc107' || lc === '#fbbc04' || lc === '#fb8c00' || lc === 'yellow') {
+          c = '#FBBC04';
+        } else if (lc === '#f44336' || lc === '#ea4335' || lc === '#ff3b30' || lc === 'red') {
+          c = '#EA4335';
+        } else if (color.startsWith('#')) {
+          c = color;
+        }
+      }
+      return c;
+    }
+
     // Draw colored route polylines from AI-segmented GeoJSON
     function drawRoute(geoJson, destLat, destLon, routeColor) {
       clearRoute();
