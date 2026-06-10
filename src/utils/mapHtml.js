@@ -414,7 +414,41 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
           routeLayers.push(polyCore);
         });
       } else if (geoJson.geometry && geoJson.geometry.coordinates) {
-        // TODO: Commit 20: Fallback single color route
+        // Fallback: draw the full route as a single color line
+        // Fallback coordinates are [lon, lat] in standard GeoJSON, so map to [lat, lon]
+        var fallbackPath = geoJson.geometry.coordinates.map(function(c) {
+          return [c[1], c[0]];
+        });
+        latLngs = fallbackPath;
+
+        var fbColor = routeColor || '#4CAF50';
+
+        var fbPolyOuter = L.polyline(fallbackPath, {
+          color: fbColor,
+          opacity: GLOW_OUTER_OPACITY,
+          weight: GLOW_OUTER_WEIGHT,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+        routeLayers.push(fbPolyOuter);
+
+        var fbPolyMid = L.polyline(fallbackPath, {
+          color: fbColor,
+          opacity: GLOW_MID_OPACITY,
+          weight: GLOW_MID_WEIGHT,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+        routeLayers.push(fbPolyMid);
+
+        var fbPolyCore = L.polyline(fallbackPath, {
+          color: fbColor,
+          opacity: GLOW_CORE_OPACITY,
+          weight: GLOW_CORE_WEIGHT,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+        routeLayers.push(fbPolyCore);
       }
 
       // TODO: Commit 21: Extend bounds and fitBounds
