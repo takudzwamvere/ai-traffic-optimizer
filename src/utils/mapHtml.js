@@ -164,7 +164,8 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
       directionsService = new google.maps.DirectionsService();
       autocompleteService = new google.maps.places.AutocompleteService();
       geocoder = new google.maps.Geocoder();
-      placesService = new google.maps.places.PlacesService(map);
+      var dummyDiv = document.createElement('div');
+      placesService = new google.maps.places.PlacesService(dummyDiv);
 
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_TILES_LOADED' }));
