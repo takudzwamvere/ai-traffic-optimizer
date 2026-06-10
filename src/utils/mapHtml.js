@@ -235,8 +235,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     // Pan map to the user location (called from "Locate Me" FAB)
     function panToUserLocation(lat, lon) {
       if (!map) return;
-      map.panTo({ lat: lat, lng: lon });
-      map.setZoom(16);
+      map.setView([lat, lon], 16);
     }
 
     // Google Places Autocomplete
