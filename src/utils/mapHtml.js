@@ -75,6 +75,7 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
     var routeLayers = [];
     var userMarker;
     var userMarkerGlow;
+    var startMarker; // Legacy/compatibility placeholder for start position
     var endMarker;
     var directionsService;
     var autocompleteService;
