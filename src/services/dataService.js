@@ -63,23 +63,19 @@ export const getUserStats = async (userId) => {
     }
   }
 
-  // Use a COUNT-only head request so we don't download all rows just to count them
-  const { count: totalSearches, error: countError } = await supabase
+  // Single query: fetch count and specific columns in 1 network round-trip
+  const { data, count, error } = await supabase
     .from('search_history')
-    .select('*', { count: 'exact', head: true })
+    .select('destination_name, best_duration_min', { count: 'exact' })
     .eq('user_id', userId);
 
-  if (countError) return { totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 };
-
-  // Fetch only the two columns we actually need for the remaining stats
-  const { data, error } = await supabase
-    .from('search_history')
-    .select('destination_name, best_duration_min')
-    .eq('user_id', userId);
-
-  if (error) return { totalSearches: totalSearches ?? 0, distinctDestinations: 0, timeSavedMins: 0 };
+  if (error) {
+    console.warn('[DataService] getUserStats error:', error.message);
+    return { totalSearches: 0, distinctDestinations: 0, timeSavedMins: 0 };
+  }
 
   const rows = data || [];
+  const totalSearches = count ?? rows.length;
   const distinctDestinations = new Set(rows.map(h => h.destination_name)).size;
   // Estimate: each search with a positive ETA saved ~5 mins vs the worst alternative
   const timeSavedMins = rows.reduce((acc, curr) => acc + (curr.best_duration_min > 0 ? 5 : 0), 0);
