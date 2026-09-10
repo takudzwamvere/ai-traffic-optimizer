@@ -105,7 +105,8 @@ export const saveSearch = async (userId, searchData) => {
         searched_at: new Date().toISOString()
       };
       history.unshift(newSearch);
-      await AsyncStorage.setItem('@guest_history', JSON.stringify(history));
+      const cappedHistory = history.slice(0, 50);
+      await AsyncStorage.setItem('@guest_history', JSON.stringify(cappedHistory));
       return newSearch;
     } catch (e) {
       return null;
