@@ -87,9 +87,7 @@ export const calculateRouteScore = (route, weatherData, corridorRoute = null, co
     baseDurationSeconds = baseMins * 60;
   }
   
-  const delayRatePerMeter = result.totalDelay / Math.max(route.distance, 1);
-  const scaledDelay = delayRatePerMeter * route.distance;
-  const predictedDuration = baseDurationSeconds + scaledDelay;
+  const predictedDuration = baseDurationSeconds + result.totalDelay;
 
   // Weather severity penalty
   let weatherPenalty = 0;
@@ -193,9 +191,7 @@ export const processAndRankRoutes = (rawRoutes, weatherData, originName, destNam
         const baseMins = isPeakOffset ? (corridorRoute.peakMinutes || corridorRoute.typicalMinutes) : corridorRoute.typicalMinutes;
         baseDurationSeconds = baseMins * 60;
       }
-      const delayRatePerMeter = result.totalDelay / Math.max(route.distance, 1);
-      const scaledDelay = delayRatePerMeter * route.distance;
-      const duration = baseDurationSeconds + scaledDelay;
+      const duration = baseDurationSeconds + result.totalDelay;
       const minutes = Math.max(1, Math.round(duration / 60));
 
       // Compute avg predicted speed for summary context

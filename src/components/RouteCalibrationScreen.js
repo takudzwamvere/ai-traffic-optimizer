@@ -42,13 +42,21 @@ export default function RouteCalibrationScreen({ visible, onClose }) {
 
   // Adjust duration of a specific route
   const adjustDuration = (corridorIdx, routeIdx, field, delta) => {
-    setCorridors(prev => {
-      const copy = [...prev];
-      const route = copy[corridorIdx].routes[routeIdx];
-      const newVal = Math.max(1, (route[field] || 5) + delta);
-      route[field] = newVal;
-      return copy;
-    });
+    setCorridors(prev =>
+      prev.map((corridor, cIdx) => {
+        if (cIdx !== corridorIdx) return corridor;
+        return {
+          ...corridor,
+          routes: corridor.routes.map((route, rIdx) => {
+            if (rIdx !== routeIdx) return route;
+            return {
+              ...route,
+              [field]: Math.max(1, (route[field] || 5) + delta),
+            };
+          }),
+        };
+      })
+    );
   };
 
   // Reset a single corridor to default
