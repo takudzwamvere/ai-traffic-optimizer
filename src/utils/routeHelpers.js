@@ -89,8 +89,6 @@ export const calculateRouteScore = (route, weatherData, corridorRoute = null, co
   const delayRatePerMeter = result.totalDelay / Math.max(route.distance, 1);
   const scaledDelay = delayRatePerMeter * route.distance;
   const predictedDuration = baseDurationSeconds + scaledDelay;
-  
-  const totalDelayMinutes = scaledDelay / 60;
 
   // Weather severity penalty
   let weatherPenalty = 0;
@@ -100,7 +98,8 @@ export const calculateRouteScore = (route, weatherData, corridorRoute = null, co
     else if (weatherData.code >= 51 || weatherData.rain > 0.5) weatherPenalty = 40;  // Drizzle
   }
 
-  return predictedDuration + (totalDelayMinutes * 60) + weatherPenalty;
+  // predictedDuration already includes scaledDelay — don't add it again
+  return predictedDuration + weatherPenalty;
 };
 
 // --- Deduplicate roads by name (merge conditions) ---
