@@ -27,7 +27,7 @@ const MapLayer = forwardRef(({ origin, onLoadEnd, onTilesLoaded, onRouteResult, 
     <View style={styles.mapContainer}>
       <WebView
         ref={ref}
-        originWhitelist={['*']}
+        originWhitelist={['https://*', 'http://*']}
         source={{ html: mapHtml, baseUrl: '' }}
         style={{ flex: 1 }}
         onLoadEnd={onLoadEnd}
