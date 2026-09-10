@@ -52,10 +52,11 @@ export const applyMLScoring = (route, originalScore, corridorName = null) => {
 
   // 2. Fallback heuristic: Extract specific known bottlenecks from road names
   const roadNames = extractRoadNames(route);
-  if (roadNames.includes('Masiyephambili Drive')) {
+  const hasRoad = (needle) => roadNames.some(r => r.toLowerCase().includes(needle.toLowerCase()));
+  if (hasRoad('Masiyephambili')) {
     mlScore *= 1.15; // Historically very bad during peaks, penalty
   }
-  if (roadNames.includes('Leopold Takawira Avenue')) {
+  if (hasRoad('Leopold Takawira')) {
     mlScore *= 1.05; // Slightly congested usually
   }
 
