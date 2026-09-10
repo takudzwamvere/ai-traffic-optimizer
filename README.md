@@ -80,7 +80,7 @@ ai-traffic-optimizer/
 │   ├── components/            # Reusable UI (SearchBar, BottomSheet, MapLayer, WeatherWidget)
 │   ├── constants/             # App-wide constants (colors.js)
 │   ├── data/                  # Preloaded landmarks (locations.json)
-│   ├── services/              # External API callers (trafficApi.js, weatherApi.js)
+│   ├── services/              # External API callers (weatherApi.js, dataService.js, mlOptimization.js)
 │   └── utils/                 # Core logic engines (trafficEngine.js, routeHelpers.js, mapHtml.js)
 └── ...
 ```
