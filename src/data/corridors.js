@@ -15,7 +15,6 @@ export const KNOWN_CORRIDORS = [
   {
     origin: 'NUST University',
     destination: 'Bulawayo City Hall',
-    // Correct real-world NUST coordinates
     originCoords: { lat: -20.16504573651969, lon: 28.641947045699503 },
     routes: [
       {
@@ -44,7 +43,59 @@ export const KNOWN_CORRIDORS = [
       morning: { start: 7, end: 9 },
       afternoon: { start: 16, end: 18.5 },
     },
-    peakDelayFactor: 1.167, // 7/6 = exactly 1 extra minute at peak
+    peakDelayFactor: 1.167,
+  },
+  {
+    origin: 'Mpilo Central Hospital',
+    destination: 'Bulawayo City Hall',
+    originCoords: { lat: -20.1433, lon: 28.5731 },
+    routes: [
+      {
+        name: 'via Luveve Rd',
+        viaRoads: ['luveve', 'lobengula'],
+        typicalMinutes: 7,
+        peakMinutes: 11,
+        description: 'Direct arterial route via Luveve Road into CBD',
+      },
+      {
+        name: 'via Basch St',
+        viaRoads: ['basch', '10th ave'],
+        typicalMinutes: 8,
+        peakMinutes: 12,
+        description: 'Southern approach into city centre via Basch Street',
+      },
+    ],
+    peakHours: {
+      morning: { start: 7, end: 9 },
+      afternoon: { start: 16, end: 18.5 },
+    },
+    peakDelayFactor: 1.5,
+  },
+  {
+    origin: 'United Bulawayo Hospitals (UBH)',
+    destination: 'Bulawayo City Hall',
+    originCoords: { lat: -20.1664, lon: 28.6169 },
+    routes: [
+      {
+        name: 'via 12th Ave',
+        viaRoads: ['12th ave', 'fife'],
+        typicalMinutes: 5,
+        peakMinutes: 8,
+        description: 'Direct eastern approach along 12th Avenue',
+      },
+      {
+        name: 'via Leopold Takawira',
+        viaRoads: ['leopold takawira', 'jason moyo'],
+        typicalMinutes: 6,
+        peakMinutes: 9,
+        description: 'Main commercial artery via Leopold Takawira Avenue',
+      },
+    ],
+    peakHours: {
+      morning: { start: 7, end: 9 },
+      afternoon: { start: 16, end: 18.5 },
+    },
+    peakDelayFactor: 1.45,
   },
 ];
 
