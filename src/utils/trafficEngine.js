@@ -194,7 +194,8 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
   // 4. Final Speed (congestion + weather stacked)
   let predictedSpeed = baseSpeedKmh * congestionReduction * weatherMultiplier;
 
-  // Real-time Congestion Simulation — deterministic seeded randomness
+  // Heuristic congestion simulation — deterministic seeded randomness
+  // These are PREDICTED slowdowns, not real-time incident reports.
   // Seed uses timeOffset + distance so each time slot + road = unique but stable result
   let incidentReason = null;
   if (distance > 500) {
@@ -202,10 +203,10 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
     const randomRoll = seed - Math.floor(seed);
     if (roadType === ROAD_TYPES.MAIN && randomRoll < 0.05) {
       predictedSpeed *= 0.75; // Softened: 25% drop (was 40%)
-      incidentReason = 'Bottleneck Delay';
+      incidentReason = 'Predicted congestion';
     } else if (roadType === ROAD_TYPES.HIGHWAY && timeFactor > 0.7 && randomRoll < 0.02) {
       predictedSpeed *= 0.6;  // Softened: 40% drop (was 70%)
-      incidentReason = 'Accident Reported';
+      incidentReason = 'Predicted slowdown';
     }
   }
 

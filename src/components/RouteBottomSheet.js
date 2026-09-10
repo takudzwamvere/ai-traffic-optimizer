@@ -56,7 +56,7 @@ export default function RouteBottomSheet({
   const hasSignificantIncident = roadConditions?.some(
     r => r.incidentReason && r.delayMinutes > 2
   );
-  if (hasSignificantIncident) conditions.push('Incident detected');
+  if (hasSignificantIncident) conditions.push('Slowdown predicted');
   if (conditions.length === 0) conditions.push('Standard conditions');
 
   // Delay colour: red only for significant delays on non-clear routes
