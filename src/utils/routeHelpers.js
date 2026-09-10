@@ -2,6 +2,7 @@ import { COLORS } from '../constants/colors.js';
 import { calculateSegmentSpeed } from './trafficEngine.js';
 import { findCorridor, matchRouteToCorridorRoute, isInPeakHours } from '../data/corridors.js';
 import { extractRoadNames } from './routeUtils.js';
+import { applyMLScoring } from '../services/mlOptimization.js';
 
 // --- Road Conditions Extraction ---
 export const processRouteSegments = (route, weatherData, timeOffset = 0) => {
@@ -127,7 +128,6 @@ const deduplicateRoadConditions = (conditions) => {
 };
 
 // --- Main Processing Pipeline ---
-import { applyMLScoring } from '../services/mlOptimization.js';
 
 export const processAndRankRoutes = (rawRoutes, weatherData, originName, destName) => {
   const corridor = findCorridor(originName, destName);
