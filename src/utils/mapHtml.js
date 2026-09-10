@@ -198,6 +198,16 @@ export const getMapHtml = (defaultCoords = DEFAULT_COORDS) => `
           requestAutocompleteSuggestions(msg.query, msg.reqId);
         } else if (msg.type === 'PLACE_DETAILS') {
           requestPlaceDetails(msg.placeId, msg.reqId);
+        } else if (msg.type === 'SET_USER_LOCATION') {
+          setUserLocation(msg.lat, msg.lon);
+        } else if (msg.type === 'PAN_TO_USER') {
+          panToUserLocation(msg.lat, msg.lon);
+        } else if (msg.type === 'ROUTE_REQUEST') {
+          requestGoogleRoute(msg.origLat, msg.origLon, msg.destLat, msg.destLon);
+        } else if (msg.type === 'DRAW_ROUTE') {
+          drawRoute(msg.geoJson, msg.destLat, msg.destLon, msg.routeColor);
+        } else if (msg.type === 'APPLY_MAP_STYLE') {
+          applyMapStyle(msg.stylesJson);
         }
       });
     }

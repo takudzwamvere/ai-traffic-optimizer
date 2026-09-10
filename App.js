@@ -94,10 +94,9 @@ function MainApp() {
   // Inject new map style whenever the theme changes
   useEffect(() => {
     if (webViewRef.current && theme.mapStyle) {
-      const js = `applyMapStyle(${JSON.stringify(JSON.stringify(theme.mapStyle))}); true;`;
-      webViewRef.current.injectJavaScript(js);
+      sendToWebView({ type: 'APPLY_MAP_STYLE', stylesJson: JSON.stringify(theme.mapStyle) });
     }
-  }, [theme.key]);
+  }, [theme.key, sendToWebView]);
 
   // --- Refs ---
   const locationSubscription = useRef(null);
@@ -181,12 +180,7 @@ function MainApp() {
           }
 
           // Always update blue dot on map
-          const script = `
-            if (typeof setUserLocation === 'function') {
-              setUserLocation(${latitude}, ${longitude});
-            }
-          `;
-          webViewRef.current?.injectJavaScript(script);
+          sendToWebView({ type: 'SET_USER_LOCATION', lat: latitude, lon: longitude });
         }
       );
       locationSubscription.current = sub;
@@ -392,17 +386,13 @@ function MainApp() {
       const weatherData = await getCurrentWeather(resolvedOrigin.lat, resolvedOrigin.lon);
       setWeather(weatherData);
 
-      const script = `
-        try {
-          if (typeof requestGoogleRoute === 'function') {
-            requestGoogleRoute(${resolvedOrigin.lat}, ${resolvedOrigin.lon}, ${resolvedDest.lat}, ${resolvedDest.lon});
-          }
-        } catch(err) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', message: err.message }));
-        }
-        true;
-      `;
-      webViewRef.current?.injectJavaScript(script);
+      sendToWebView({
+        type: 'ROUTE_REQUEST',
+        origLat: resolvedOrigin.lat,
+        origLon: resolvedOrigin.lon,
+        destLat: resolvedDest.lat,
+        destLon: resolvedDest.lon,
+      });
     } catch (error) {
       console.error("[App] Error in handleRouteSearch:", error);
       setLoading(false);
@@ -488,8 +478,13 @@ function MainApp() {
     const destLat = dest?.lat || route.geometry.coordinates[route.geometry.coordinates.length - 1][1];
     const destLon = dest?.lon || route.geometry.coordinates[route.geometry.coordinates.length - 1][0];
 
-    const script = `drawRoute(${JSON.stringify(geoJson)}, ${destLat}, ${destLon}, '${route.uiColor}'); true;`;
-    webViewRef.current.injectJavaScript(script);
+    sendToWebView({
+      type: 'DRAW_ROUTE',
+      geoJson,
+      destLat,
+      destLon,
+      routeColor: route.uiColor,
+    });
   };
 
   // ==========================================
@@ -529,12 +524,7 @@ function MainApp() {
   };
 
   const handleLocateMe = () => {
-    const script = `
-      if (typeof panToUserLocation === 'function') {
-        panToUserLocation(${gpsCoords.lat}, ${gpsCoords.lon});
-      }
-    `;
-    webViewRef.current?.injectJavaScript(script);
+    sendToWebView({ type: 'PAN_TO_USER', lat: gpsCoords.lat, lon: gpsCoords.lon });
   };
 
   // ==========================================
@@ -562,7 +552,7 @@ function MainApp() {
         onAutocompleteResult={handleAutocompleteResult}
         onPlaceDetailsResult={handlePlaceDetailsResult}
         onLoadEnd={() => {
-          webViewRef.current?.injectJavaScript(`setUserLocation(${gpsCoords.lat}, ${gpsCoords.lon}); true;`);
+          sendToWebView({ type: 'SET_USER_LOCATION', lat: gpsCoords.lat, lon: gpsCoords.lon });
         }}
       />
 
