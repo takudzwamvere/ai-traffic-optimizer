@@ -59,12 +59,12 @@ export default function RouteBottomSheet({
   if (hasSignificantIncident) conditions.push('Slowdown predicted');
   if (conditions.length === 0) conditions.push('Standard conditions');
 
-  // Delay colour: red only for significant delays on non-clear routes
+  // Delay colour: danger for significant delays, otherwise theme-aware textSub/textMuted
   const delayColor = delayMins > 5 && selectedRoute.uiColor !== COLORS.primary
-    ? '#EA4335'
+    ? COLORS.danger
     : delayMins > 0
-    ? '#888'
-    : '#222';
+    ? c.textSub
+    : c.textMuted;
 
   return (
     <View style={[styles.bottomSheet, { 
@@ -130,7 +130,7 @@ export default function RouteBottomSheet({
               <Feather 
                 name={isSheetExpanded ? "chevron-down" : "chevron-up"} 
                 size={28} 
-                color={COLORS.primary} 
+                color={c.primary} 
               />
             </View>
           </View>
