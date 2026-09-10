@@ -3,10 +3,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View, Text, Alert, Keyboard, LayoutAnimation, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import * as Location from 'expo-location';
-import NetInfo from '@react-native-community/netinfo';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { COLORS } from './src/constants/colors';
+
+import { useGPSTracking } from './src/hooks/useGPSTracking';
+import { useMapBridge } from './src/hooks/useMapBridge';
+import { useNetworkStatus } from './src/hooks/useNetworkStatus';
 
 import MapLayer from './src/components/MapLayer';
 import RoutePlanner from './src/components/RoutePlanner';
@@ -34,19 +36,28 @@ const DEFAULT_COORDS = { lat: -20.1706, lon: 28.5583 };
 
 function MainApp() {
   const insets = useSafeAreaInsets();
-  const webViewRef = useRef(null);
   const { user } = useAuth();
   const { theme, cycleTheme } = useTheme();
   const c = theme.colors;
 
-  // --- Dual-Location State ---
-  const [originMode, setOriginMode] = useState('gps');       // 'gps' | 'manual'
-  // Ref so the GPS watcher callback always reads the latest mode without re-subscribing
-  const originModeRef = useRef('gps');
-  const [gpsCoords, setGpsCoords] = useState(DEFAULT_COORDS); // Always-updating GPS
-  const [originCoords, setOriginCoords] = useState(null);     // Used for routing
+  // --- Custom Hooks ---
+  const {
+    webViewRef, sendToWebView, setUserLocation, panToUser,
+    requestRoute, drawRoute: drawRouteOnWebView, applyMapStyle,
+  } = useMapBridge();
+
+  const {
+    gpsCoords, originCoords, setOriginCoords,
+    originMode, setOriginMode,
+  } = useGPSTracking((lat, lon) => {
+    // Update blue dot on map whenever GPS fires
+    setUserLocation(lat, lon);
+  });
+
+  const isConnected = useNetworkStatus();
+
+  // --- Location State ---
   const [destinationCoords, setDestinationCoords] = useState(null);
-  // True while we're waiting for Google to geocode a typed origin (replaces implicit 'typing' mode)
   const [isFetchingOriginCoords, setIsFetchingOriginCoords] = useState(false);
 
   // --- Input Text State ---
@@ -65,7 +76,6 @@ function MainApp() {
   // --- UI State ---
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
-  const [isConnected, setIsConnected] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [isProfileVisible, setIsProfileVisible] = useState(false);
   const [mapTilesLoaded, setMapTilesLoaded] = useState(false);
@@ -93,30 +103,14 @@ function MainApp() {
   // Inject new map style whenever the theme changes
   useEffect(() => {
     if (webViewRef.current && theme.mapStyle) {
-      sendToWebView({ type: 'APPLY_MAP_STYLE', stylesJson: JSON.stringify(theme.mapStyle) });
+      applyMapStyle(theme.mapStyle);
     }
-  }, [theme.key, sendToWebView]);
+  }, [theme.key, applyMapStyle, webViewRef]);
 
   // --- Refs ---
-  const locationSubscription = useRef(null);
   // Flags to prevent autocomplete from re-firing after the user selects a suggestion
   const skipOriginAutocomplete = useRef(false);
   const skipDestAutocomplete = useRef(false);
-
-  // ==========================================
-  // Safe WebView messaging (avoids JS string injection)
-  // ==========================================
-  // Instead of building JS strings with user input, we post a typed JSON
-  // message and let the WebView dispatch it to the right function.
-  const sendToWebView = useCallback((msg) => {
-    const js = `
-      (function(){
-        var e = new MessageEvent('message', { data: ${JSON.stringify(JSON.stringify(msg))} });
-        window.dispatchEvent(e);
-      })(); true;
-    `;
-    webViewRef.current?.injectJavaScript(js);
-  }, []);
 
   // ==========================================
   // Initialise ML engine and load route calibrations on mount
@@ -141,64 +135,6 @@ function MainApp() {
       }).catch(() => { });
     }
   }, [user?.id]);
-
-  // ==========================================
-  // GPS Location Tracking
-  // ==========================================
-  // Keep originModeRef in sync so the watcher callback can read the latest
-  // value without the effect needing originMode as a dependency.
-  useEffect(() => {
-    originModeRef.current = originMode;
-  }, [originMode]);
-
-  useEffect(() => {
-    let sub;
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert("Permission Denied", "Location permission is required for navigation.");
-        return;
-      }
-
-      sub = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 2000,
-          distanceInterval: 10,
-        },
-        (location) => {
-          const { latitude, longitude } = location.coords;
-          const newCoords = { lat: latitude, lon: longitude };
-
-          // Always update GPS reference
-          setGpsCoords(newCoords);
-
-          // Read the latest mode via ref — no re-subscription needed
-          if (originModeRef.current === 'gps') {
-            setOriginCoords(newCoords);
-          }
-
-          // Always update blue dot on map
-          sendToWebView({ type: 'SET_USER_LOCATION', lat: latitude, lon: longitude });
-        }
-      );
-      locationSubscription.current = sub;
-    })();
-
-    return () => {
-      sub?.remove();
-    };
-  }, []); // Empty deps — watcher runs for the app's lifetime
-
-  // ==========================================
-  // Network Connectivity
-  // ==========================================
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      setIsConnected(state.isConnected);
-    });
-    return () => unsubscribe();
-  }, []);
 
   // ==========================================
   // Autocomplete — Google Places Webview integration
@@ -385,13 +321,7 @@ function MainApp() {
       const weatherData = await getCurrentWeather(resolvedOrigin.lat, resolvedOrigin.lon);
       setWeather(weatherData);
 
-      sendToWebView({
-        type: 'ROUTE_REQUEST',
-        origLat: resolvedOrigin.lat,
-        origLon: resolvedOrigin.lon,
-        destLat: resolvedDest.lat,
-        destLon: resolvedDest.lon,
-      });
+      requestRoute(resolvedOrigin.lat, resolvedOrigin.lon, resolvedDest.lat, resolvedDest.lon);
     } catch (error) {
       console.error("[App] Error in handleRouteSearch:", error);
       setLoading(false);
@@ -477,13 +407,7 @@ function MainApp() {
     const destLat = dest?.lat || route.geometry.coordinates[route.geometry.coordinates.length - 1][1];
     const destLon = dest?.lon || route.geometry.coordinates[route.geometry.coordinates.length - 1][0];
 
-    sendToWebView({
-      type: 'DRAW_ROUTE',
-      geoJson,
-      destLat,
-      destLon,
-      routeColor: route.uiColor,
-    });
+    drawRouteOnWebView(geoJson, destLat, destLon, route.uiColor);
   };
 
   // ==========================================
@@ -523,7 +447,7 @@ function MainApp() {
   };
 
   const handleLocateMe = () => {
-    sendToWebView({ type: 'PAN_TO_USER', lat: gpsCoords.lat, lon: gpsCoords.lon });
+    panToUser(gpsCoords.lat, gpsCoords.lon);
   };
 
   // ==========================================
@@ -551,7 +475,7 @@ function MainApp() {
         onAutocompleteResult={handleAutocompleteResult}
         onPlaceDetailsResult={handlePlaceDetailsResult}
         onLoadEnd={() => {
-          sendToWebView({ type: 'SET_USER_LOCATION', lat: gpsCoords.lat, lon: gpsCoords.lon });
+          setUserLocation(gpsCoords.lat, gpsCoords.lon);
         }}
       />
 
