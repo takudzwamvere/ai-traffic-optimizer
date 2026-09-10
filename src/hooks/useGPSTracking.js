@@ -28,42 +28,64 @@ export function useGPSTracking(onLocationUpdate) {
     originModeRef.current = originMode;
   }, [originMode]);
 
+  const onLocationUpdateRef = useRef(onLocationUpdate);
   useEffect(() => {
+    onLocationUpdateRef.current = onLocationUpdate;
+  }, [onLocationUpdate]);
+
+  useEffect(() => {
+    let isMounted = true;
     let sub;
+
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert("Permission Denied", "Location permission is required for navigation.");
-        return;
-      }
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (!isMounted) return;
 
-      sub = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 2000,
-          distanceInterval: 10,
-        },
-        (location) => {
-          const { latitude, longitude } = location.coords;
-          const newCoords = { lat: latitude, lon: longitude };
-
-          setGpsCoords(newCoords);
-
-          if (originModeRef.current === 'gps') {
-            setOriginCoords(newCoords);
-          }
-
-          // Notify parent (e.g. to update blue dot on map)
-          onLocationUpdate?.(latitude, longitude);
+        if (status !== 'granted') {
+          Alert.alert("Permission Denied", "Location permission is required for navigation.");
+          return;
         }
-      );
-      locationSubscription.current = sub;
+
+        sub = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 2000,
+            distanceInterval: 10,
+          },
+          (location) => {
+            if (!isMounted) return;
+            const { latitude, longitude } = location.coords;
+            const newCoords = { lat: latitude, lon: longitude };
+
+            setGpsCoords(newCoords);
+
+            if (originModeRef.current === 'gps') {
+              setOriginCoords(newCoords);
+            }
+
+            // Notify parent (e.g. to update blue dot on map)
+            onLocationUpdateRef.current?.(latitude, longitude);
+          }
+        );
+
+        if (!isMounted) {
+          sub?.remove();
+          return;
+        }
+        locationSubscription.current = sub;
+      } catch (err) {
+        console.warn('[GPSTracking] Failed to start location watcher:', err);
+      }
     })();
 
     return () => {
+      isMounted = false;
       sub?.remove();
+      locationSubscription.current?.remove();
+      locationSubscription.current = null;
     };
-  }, []); // Empty deps — watcher runs for the app's lifetime
+  }, []); // Empty deps — watcher runs for the component's lifetime
 
   return {
     gpsCoords,
