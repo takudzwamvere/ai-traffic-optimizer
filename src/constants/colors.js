@@ -1,5 +1,6 @@
 export const COLORS = {
-  primary: '#4CAF50', // Green
+  primary: '#4CAF50', // Green (route flowing)
+  accent: '#007AFF',  // Blue (interactive / UI accent)
   warning: '#FFC107', // Amber
   danger: '#F44336',  // Red
   text: '#333333',

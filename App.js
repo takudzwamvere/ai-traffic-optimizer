@@ -690,7 +690,7 @@ function AuthGate() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={COLORS.accent} />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
     right: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.accent,
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -775,7 +775,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   tabTextActive: {
-    color: '#007AFF',
+    color: COLORS.accent,
     fontWeight: '700',
   },
   tabAvatar: {

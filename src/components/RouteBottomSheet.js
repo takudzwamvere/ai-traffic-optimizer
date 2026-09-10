@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   routeInfo: { flex: 1 },
   duration: { fontSize: 30, fontWeight: '300', color: '#222', letterSpacing: -1 },
   distance: { fontSize: 16, color: '#777', fontWeight: '400', marginBottom: 4 },
-  departureTag: { fontSize: 13, color: '#007AFF', fontWeight: '600' },
+  departureTag: { fontSize: 13, color: COLORS.accent, fontWeight: '600' },
 
   // AI delay + conditions merged from RouteSummaryCard
   aiRow: {
@@ -275,8 +275,8 @@ const styles = StyleSheet.create({
   altDuration: { fontSize: 18, fontWeight: '600' },
   altDistance: { fontSize: 13, color: '#888', marginTop: 2 },
   altLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-  corridorName: { fontSize: 11, color: '#007AFF', fontWeight: '600', marginLeft: 8 },
-  altCorridorName: { fontSize: 10, color: '#007AFF', fontWeight: '500', marginTop: 2 },
+  corridorName: { fontSize: 11, color: COLORS.accent, fontWeight: '600', marginLeft: 8 },
+  altCorridorName: { fontSize: 10, color: COLORS.accent, fontWeight: '500', marginTop: 2 },
 
   singleRouteBanner: {
     flexDirection: 'row',
