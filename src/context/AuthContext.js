@@ -74,11 +74,17 @@ export function AuthProvider({ children }) {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    setUser(null);
-    setSession(null);
-    // Clear persisted guest state on explicit sign-out
-    await AsyncStorage.removeItem(GUEST_STORAGE_KEY).catch(() => {});
+    try {
+      if (!user?.isGuest) {
+        await signOut();
+      }
+    } catch (err) {
+      console.warn('[Auth] Remote signOut failed (continuing local cleanup):', err);
+    } finally {
+      setUser(null);
+      setSession(null);
+      await AsyncStorage.removeItem(GUEST_STORAGE_KEY).catch(() => {});
+    }
   };
 
   const handleGuestSignIn = async () => {
