@@ -155,7 +155,18 @@ export const calculateSegmentSpeed = (distance, duration, weatherData, date = ne
   // 1. Base Speed (free flow from OSRM)
   // OSRM duration is in seconds, distance in meters.
   // Speed = (dist / dur) * 3.6 for km/h
-  if (duration <= 0) return { speed: 0.1, color: COLORS.text, delay: 0, incidentReason: null };
+  if (duration <= 0) {
+    return {
+      predictedSpeed: 0.1,
+      baseSpeed: 0.1,
+      roadType: ROAD_TYPES.LOCAL,
+      newDuration: 0,
+      originalDuration: 0,
+      delay: 0,
+      color: COLORS.primary,
+      incidentReason: null,
+    };
+  }
   
   const baseSpeedKmh = (distance / duration) * 3.6;
   const roadType = classifyRoad(baseSpeedKmh);
